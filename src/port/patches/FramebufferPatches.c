@@ -38,15 +38,25 @@ s32 port_fbMirrorS(s32 screenX) {
 static u16 s_prevFrameSentinel[SCREEN_WIDTH * SCREEN_HEIGHT];
 
 static s32 s_prevFrameFbId = -1;
+static b32 s_prevFrameRequested = false;
+static b32 s_prevFrameValid = false;
 
 u16* port_getPrevFrameSentinel(void) {
     ensureMirror(&s_prevFrameFbId, s_prevFrameSentinel);
+    s_prevFrameRequested = true;
     return s_prevFrameSentinel;
 }
 
 void port_emitPrevFrameCapture(Gfx** gfxP) {
+    if (!s_prevFrameRequested) {
+        s_prevFrameValid = false;
+        return;
+    }
+
     ensureMirror(&s_prevFrameFbId, s_prevFrameSentinel);
     gDPCopyFB((*gfxP)++, s_prevFrameFbId, 0, false, NULL);
+    s_prevFrameValid = true;
+    s_prevFrameRequested = false;
 }
 
 // Scene mirror: captured inline mid-display-list, replacing the hardware trick of
@@ -77,6 +87,10 @@ void port_appendGfx_draw_prev_frame_buffer(s32 x1, s32 y1, s32 x2, s32 y2, f32 a
     s32 visWidth = visRight - visLeft;
     s32 dstLeft;
     s32 dstRight;
+
+    if (!s_prevFrameValid) {
+        return;
+    }
 
     // round the x positions, as the original did
     x1 = x1 - (x1 % 4);

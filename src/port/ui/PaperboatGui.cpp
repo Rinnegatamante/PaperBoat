@@ -1,5 +1,7 @@
 #include "PaperboatGui.hpp"
+#ifndef __vita__
 #include <ship/window/gui/ShaderSettingsWindow.h>
+#endif
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -25,7 +27,9 @@ std::shared_ptr<PaperboatMenu> mPaperboatMenu;
 std::shared_ptr<Notification::Window> mNotificationWindow;
 std::shared_ptr<InputViewer> mInputViewer;
 std::shared_ptr<InputViewerSettingsWindow> mInputViewerSettings;
+#ifndef __vita__
 std::shared_ptr<Ship::ShaderSettingsWindow> mShaderSettingsWindow;
+#endif
 std::shared_ptr<PaperboatModalWindow> mModalWindow;
 std::shared_ptr<Ship::GuiWindow> mConsoleWindow;
 std::shared_ptr<EventDebuggerWindow> mEventDebuggerWindow;
@@ -91,10 +95,12 @@ void SetupGuiElements() {
     );
     gui->AddGuiWindow(mInputViewerSettings);
 
+#ifndef __vita__
     mShaderSettingsWindow = std::make_shared<Ship::ShaderSettingsWindow>(
         CVAR_WINDOW("ShaderSettings"), "Shader Settings", ImVec2(420, 520)
     );
     gui->AddGuiWindow(mShaderSettingsWindow);
+#endif
 
     // Registered everywhere; draws nothing unless the touch controls are on, so
     // the layout can be edited from a desktop build.
@@ -112,7 +118,9 @@ void Destroy() {
     mInputEditorWindow = nullptr;
     mNotificationWindow = nullptr;
     mInputViewer = nullptr;
+#ifndef __vita__
     mShaderSettingsWindow = nullptr;
+#endif
     mInputViewerSettings = nullptr;
     mConsoleWindow = nullptr;
     mValueViewerWindow = nullptr;

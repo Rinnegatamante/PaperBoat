@@ -1,0 +1,342 @@
+TARGET := PaperBoat
+
+TITLE := PAPERBOAT
+
+PYTHON ?= python
+VITA_MAKE_FSELF_DEBUG := tools/vita-make-fself-debug.py
+RAZOR_SELF := $(TARGET)-razor.self
+DEBUG_SELF := $(TARGET)-razor_debug.self
+
+VITAGL_DIR ?= F:/Ubuntu/vitaGL-paperboat
+VITAGL_FLAGS := HAVE_PTHREAD=1 NO_DEBUG=1 HAVE_GLSL_TEXTURE_SIZE=1 INDICES_SPEEDHACK=1
+VITAGL_LIB := $(VITAGL_DIR)/libvitaGL.a
+LUS_ROOT ?= libultraship
+
+TORCH_INCLUDES := Torch/src Torch/src/utils Torch/lib Torch Torch/src/factories Torch/lib/n64graphics Torch/lib/binarytools
+
+TORCH_SOURCES := Torch/src Torch/src/factories Torch/src/factories/pm64 Torch/lib/binarytools Torch/src/n64 Torch/src/preprocess Torch/src/types \
+	Torch/src/utils Torch/lib/libmio0 Torch/src/archive Torch/lib/libyay0 Torch/lib/libyaz0 Torch/lib/n64graphics Torch/src/factories/naudio/v0 \
+	Torch/src/factories/naudio/v1 Torch/lib/bk_zip
+
+LUS_INCLUDES := $(LUS_ROOT)/include $(LUS_ROOT)/src $(LUS_ROOT)/src/ship/utils/binarytools $(LUS_ROOT)/src/resource/type \
+	$(LUS_ROOT)/src/resource $(LUS_ROOT)/src/window $(LUS_ROOT)/src/window/gui $(LUS_ROOT)/src/audio $(LUS_ROOT)/src/graphic \
+	$(LUS_ROOT)/src $(LUS_ROOT)/imgui $(LUS_ROOT)/imgui/backends $(LUS_ROOT)/src/public/bridge $(LUS_ROOT)/include/libultraship \
+	$(LUS_ROOT)/src/resource/factory $(LUS_ROOT)/imgui/backends $(LUS_ROOT)/imgui
+
+LUS_SOURCES := $(LUS_ROOT)/src/fast $(LUS_ROOT)/src/fast/resource/type $(LUS_ROOT)/src/fast/resource/factory $(LUS_ROOT)/src/ship/resource/factory \
+	$(LUS_ROOT)/src/fast/debug $(LUS_ROOT)/src/fast/backends $(LUS_ROOT)/src/ship $(LUS_ROOT)/src/ship/audio $(LUS_ROOT)/src/ship/resource/type \
+	$(LUS_ROOT)/src/ship/config $(LUS_ROOT)/src/ship/controller/controldeck $(LUS_ROOT)/src/ship/controller/controldevice $(LUS_ROOT)/src/ship/utils \
+	$(LUS_ROOT)/src/ship/controller/controldevice/controller $(LUS_ROOT)/src/ship/controller/controldevice/controller/mapping \
+	$(LUS_ROOT)/src/ship/window $(LUS_ROOT)/src/ship/controller/controldevice/controller/mapping/factories \
+	$(LUS_ROOT)/src/ship/controller/controldevice/controller/mapping/keyboard $(LUS_ROOT)/src/ship/controller/controldevice/controller/mapping/mouse \
+	$(LUS_ROOT)/src/ship/controller/controldevice/controller/mapping/sdl $(LUS_ROOT)/src/ship/controller/physicaldevice $(LUS_ROOT)/src/ship/debug \
+	$(LUS_ROOT)/src/ship/resource $(LUS_ROOT)/src/ship/resource/archive $(LUS_ROOT)/src/ship/utils/binarytools $(LUS_ROOT)/src/ship/window/gui \
+	$(LUS_ROOT)/src/ship/window/gui/resource $(LUS_ROOT)/src/libultraship/window/gui $(LUS_ROOT)/src/libultraship/log \
+	$(LUS_ROOT)/src/libultraship/libultra $(LUS_ROOT)/src/libultraship/controller/controldeck $(LUS_ROOT)/src/libultraship/bridge \
+	$(LUS_ROOT)/src/libultraship/controller/controldevice/controller $(LUS_ROOT)/src/libultraship/controller/controldevice/controller/mapping \
+	$(LUS_ROOT)/imgui $(LUS_ROOT)/src/ship/events
+
+GAME_SOURCES := src src/audio src/audio/core src/battle src/battle/action_cmd src/battle/action_cmd/common src/battle/area/arn \
+	src/battle/area/arn/actor src/battle/area/arn/stage src/battle/area/dgb src/battle/area/dgb/actor src/battle/area/dgb/stage src/battle/area/dig \
+	src/battle/area/dig/actor src/battle/area/dig/script src/battle/area/dig/stage src/battle/area/flo src/battle/area/flo/actor \
+	src/battle/area/flo/stage src/battle/area/flo2 src/battle/area/flo2/actor src/battle/area/flo2/stage src/battle/area/hos src/battle/area/hos/actor \
+	src/battle/area/hos/stage src/battle/area/isk_part_1 src/battle/area/isk_part_1/actor src/battle/area/isk_part_1/stage src/battle/area/isk_part_2 \
+	src/battle/area/isk_part_2/actor src/battle/area/isk_part_2/stage src/battle/area/iwa src/battle/area/iwa/actor src/battle/area/iwa/stage \
+	src/battle/area/jan src/battle/area/jan/actor src/battle/area/jan/stage src/battle/area/jan2 src/battle/area/jan2/actor src/battle/area/jan2/stage \
+	src/battle/area/kgr src/battle/area/kgr/actor src/battle/area/kgr/stage src/battle/area/kkj src/battle/area/kkj/actor src/battle/area/kkj/stage \
+	src/battle/area/kmr_part_1 src/battle/area/kmr_part_1/actor src/battle/area/kmr_part_1/stage src/battle/area/kmr_part_2 \
+	src/battle/area/kmr_part_2/actor src/battle/area/kmr_part_2/stage src/battle/area/kmr_part_3 src/battle/area/kmr_part_3/actor \
+	src/battle/area/kmr_part_3/stage src/battle/area/kpa src/battle/area/kpa/actor src/battle/area/kpa/stage src/battle/area/kpa2 \
+	src/battle/area/kpa2/actor src/battle/area/kpa2/stage src/battle/area/kpa3 src/battle/area/kpa3/actor src/battle/area/kpa3/stage src/battle/area/kpa4 \
+	src/battle/area/kpa4/actor src/battle/area/kpa4/stage src/battle/area/kzn src/battle/area/kzn/actor src/battle/area/kzn/stage src/battle/area/kzn2 \
+	src/battle/area/kzn2/actor src/battle/area/kzn2/anim src/battle/area/kzn2/stage src/battle/area/mac src/battle/area/mac/actor \
+	src/battle/area/mac/stage src/battle/area/mim src/battle/area/mim/actor src/battle/area/mim/stage src/battle/area/nok src/battle/area/nok/actor \
+	src/battle/area/nok/stage src/battle/area/omo src/battle/area/omo/actor src/battle/area/omo/stage src/battle/area/omo2 src/battle/area/omo2/actor \
+	src/battle/area/omo2/stage src/battle/area/omo2_1/actor src/battle/area/omo2_2/actor src/battle/area/omo2_3/actor src/battle/area/omo2_4/actor \
+	src/battle/area/omo2_5/actor src/battle/area/omo2_6/actor src/battle/area/omo3 src/battle/area/omo3/actor src/battle/area/omo3/stage \
+	src/battle/area/pra src/battle/area/pra/actor src/battle/area/pra/stage src/battle/area/pra2 src/battle/area/pra2/actor src/battle/area/pra2/stage \
+	src/battle/area/pra3 src/battle/area/pra3/actor src/battle/area/pra3/stage src/battle/area/sam src/battle/area/sam/actor src/battle/area/sam/stage \
+	src/battle/area/sam2 src/battle/area/sam2/actor src/battle/area/sam2/stage src/battle/area/sbk src/battle/area/sbk/actor src/battle/area/sbk/stage \
+	src/battle/area/tik src/battle/area/tik/actor src/battle/area/tik/stage src/battle/area/tik2 src/battle/area/tik2/actor src/battle/area/tik2/stage \
+	src/battle/area/tik3 src/battle/area/tik3/actor src/battle/area/tik3/stage src/battle/area/trd_part_1 src/battle/area/trd_part_1/actor \
+	src/battle/area/trd_part_1/stage src/battle/area/trd_part_2 src/battle/area/trd_part_2/actor src/battle/area/trd_part_2/stage \
+	src/battle/area/trd_part_3 src/battle/area/trd_part_3/actor src/battle/area/trd_part_3/stage src/battle/common/actor \
+	src/battle/common/actor/duplighost src/battle/common/actor/kmr_part_1 src/battle/common/move src/battle/common/stage/area_arn \
+	src/battle/common/stage/area_dgb src/battle/common/stage/area_flo src/battle/common/stage/area_hos src/battle/common/stage/area_isk \
+	src/battle/common/stage/area_iwa src/battle/common/stage/area_jan src/battle/common/stage/area_kgr src/battle/common/stage/area_kkj \
+	src/battle/common/stage/area_kmr src/battle/common/stage/area_kpa src/battle/common/stage/area_kzn src/battle/common/stage/area_mac \
+	src/battle/common/stage/area_mim src/battle/common/stage/area_nok src/battle/common/stage/area_omo src/battle/common/stage/area_pra \
+	src/battle/common/stage/area_sam src/battle/common/stage/area_sbk src/battle/common/stage/area_tik src/battle/common/stage/area_trd \
+	src/battle/common/stage/lib src/battle/move/hammer src/battle/move/item src/battle/move/jump src/battle/move/star_power src/battle/partner \
+	src/battle/states src/charset src/common src/common/battle src/dx src/effects src/effects/gfx src/entity src/entity/default src/entity/jan_iwa \
+	src/entity/model src/entity/sbk_omo src/evt src/filemenu src/gcc src/os src/os/nusys src/pause src/port src/port/android src/port/audio \
+	src/port/embedded src/port/enhancements src/port/enhancements/cheats src/port/enhancements/gameplay src/port/extractor src/port/importer \
+	src/port/interpolation src/port/patches src/port/save src/port/sprite src/port/ui src/port/ui/devtools/console src/port/ui/devtools/hooks \
+	src/port/ui/devtools/saveeditor src/port/ui/devtools/valueviewer src/port/web src/world src/world/action src/world/area_arn/arn_02 \
+	src/world/area_arn/arn_03 src/world/area_arn/arn_04 src/world/area_arn/arn_05 src/world/area_arn/arn_07 src/world/area_arn/arn_08 \
+	src/world/area_arn/arn_09 src/world/area_arn/arn_10 src/world/area_arn/arn_11 src/world/area_arn/arn_12 src/world/area_arn/arn_13 src/world/area_dgb \
+	src/world/area_dgb/dgb_00 src/world/area_dgb/dgb_01 src/world/area_dgb/dgb_02 src/world/area_dgb/dgb_03 src/world/area_dgb/dgb_04 \
+	src/world/area_dgb/dgb_05 src/world/area_dgb/dgb_06 src/world/area_dgb/dgb_07 src/world/area_dgb/dgb_08 src/world/area_dgb/dgb_09 \
+	src/world/area_dgb/dgb_10 src/world/area_dgb/dgb_11 src/world/area_dgb/dgb_12 src/world/area_dgb/dgb_13 src/world/area_dgb/dgb_14 \
+	src/world/area_dgb/dgb_15 src/world/area_dgb/dgb_16 src/world/area_dgb/dgb_17 src/world/area_dgb/dgb_18 src/world/area_dro/dro_01 \
+	src/world/area_dro/dro_02 src/world/area_end/common src/world/area_end/end_00 src/world/area_end/end_01 src/world/area_flo/common \
+	src/world/area_flo/flo_00 src/world/area_flo/flo_03 src/world/area_flo/flo_07 src/world/area_flo/flo_08 src/world/area_flo/flo_09 \
+	src/world/area_flo/flo_10 src/world/area_flo/flo_11 src/world/area_flo/flo_12 src/world/area_flo/flo_13 src/world/area_flo/flo_14 \
+	src/world/area_flo/flo_15 src/world/area_flo/flo_16 src/world/area_flo/flo_17 src/world/area_flo/flo_18 src/world/area_flo/flo_19 \
+	src/world/area_flo/flo_21 src/world/area_flo/flo_22 src/world/area_flo/flo_23 src/world/area_flo/flo_24 src/world/area_flo/flo_25 \
+	src/world/area_gv/gv_01 src/world/area_hos/common src/world/area_hos/hos_00 src/world/area_hos/hos_01 src/world/area_hos/hos_02 \
+	src/world/area_hos/hos_03 src/world/area_hos/hos_04 src/world/area_hos/hos_05 src/world/area_hos/hos_06 src/world/area_hos/hos_10 \
+	src/world/area_hos/hos_20 src/world/area_isk/isk_01 src/world/area_isk/isk_02 src/world/area_isk/isk_03 src/world/area_isk/isk_04 \
+	src/world/area_isk/isk_05 src/world/area_isk/isk_06 src/world/area_isk/isk_07 src/world/area_isk/isk_08 src/world/area_isk/isk_09 \
+	src/world/area_isk/isk_10 src/world/area_isk/isk_11 src/world/area_isk/isk_12 src/world/area_isk/isk_13 src/world/area_isk/isk_14 \
+	src/world/area_isk/isk_16 src/world/area_isk/isk_18 src/world/area_isk/isk_19 src/world/area_iwa/common src/world/area_iwa/iwa_00 \
+	src/world/area_iwa/iwa_01 src/world/area_iwa/iwa_02 src/world/area_iwa/iwa_03 src/world/area_iwa/iwa_04 src/world/area_iwa/iwa_10 \
+	src/world/area_iwa/iwa_11 src/world/area_jan/common src/world/area_jan/jan_00 src/world/area_jan/jan_01 src/world/area_jan/jan_02 \
+	src/world/area_jan/jan_03 src/world/area_jan/jan_04 src/world/area_jan/jan_05 src/world/area_jan/jan_06 src/world/area_jan/jan_07 \
+	src/world/area_jan/jan_08 src/world/area_jan/jan_09 src/world/area_jan/jan_10 src/world/area_jan/jan_11 src/world/area_jan/jan_12 \
+	src/world/area_jan/jan_13 src/world/area_jan/jan_14 src/world/area_jan/jan_15 src/world/area_jan/jan_16 src/world/area_jan/jan_17 \
+	src/world/area_jan/jan_18 src/world/area_jan/jan_19 src/world/area_jan/jan_22 src/world/area_jan/jan_23 src/world/area_kgr/kgr_01 \
+	src/world/area_kgr/kgr_02 src/world/area_kkj/common src/world/area_kkj/kkj_00 src/world/area_kkj/kkj_01 src/world/area_kkj/kkj_02 \
+	src/world/area_kkj/kkj_03 src/world/area_kkj/kkj_10 src/world/area_kkj/kkj_11 src/world/area_kkj/kkj_12 src/world/area_kkj/kkj_13 \
+	src/world/area_kkj/kkj_14 src/world/area_kkj/kkj_15 src/world/area_kkj/kkj_16 src/world/area_kkj/kkj_17 src/world/area_kkj/kkj_18 \
+	src/world/area_kkj/kkj_19 src/world/area_kkj/kkj_20 src/world/area_kkj/kkj_21 src/world/area_kkj/kkj_22 src/world/area_kkj/kkj_23 \
+	src/world/area_kkj/kkj_24 src/world/area_kkj/kkj_25 src/world/area_kkj/kkj_26 src/world/area_kkj/kkj_27 src/world/area_kkj/kkj_28 \
+	src/world/area_kkj/kkj_29 src/world/area_kmr/kmr_00 src/world/area_kmr/kmr_02 src/world/area_kmr/kmr_03 src/world/area_kmr/kmr_04 \
+	src/world/area_kmr/kmr_05 src/world/area_kmr/kmr_06 src/world/area_kmr/kmr_07 src/world/area_kmr/kmr_09 src/world/area_kmr/kmr_10 \
+	src/world/area_kmr/kmr_11 src/world/area_kmr/kmr_12 src/world/area_kmr/kmr_20 src/world/area_kmr/kmr_21 src/world/area_kmr/kmr_22 \
+	src/world/area_kmr/kmr_22/npc src/world/area_kmr/kmr_23 src/world/area_kmr/kmr_24 src/world/area_kmr/kmr_30 src/world/area_kpa/kpa_01 \
+	src/world/area_kpa/kpa_03 src/world/area_kpa/kpa_04 src/world/area_kpa/kpa_08 src/world/area_kpa/kpa_09 src/world/area_kpa/kpa_10 \
+	src/world/area_kpa/kpa_100 src/world/area_kpa/kpa_101 src/world/area_kpa/kpa_102 src/world/area_kpa/kpa_11 src/world/area_kpa/kpa_111 \
+	src/world/area_kpa/kpa_112 src/world/area_kpa/kpa_113 src/world/area_kpa/kpa_114 src/world/area_kpa/kpa_115 src/world/area_kpa/kpa_116 \
+	src/world/area_kpa/kpa_117 src/world/area_kpa/kpa_118 src/world/area_kpa/kpa_119 src/world/area_kpa/kpa_12 src/world/area_kpa/kpa_121 \
+	src/world/area_kpa/kpa_13 src/world/area_kpa/kpa_130 src/world/area_kpa/kpa_133 src/world/area_kpa/kpa_134 src/world/area_kpa/kpa_14 \
+	src/world/area_kpa/kpa_15 src/world/area_kpa/kpa_16 src/world/area_kpa/kpa_17 src/world/area_kpa/kpa_32 src/world/area_kpa/kpa_33 \
+	src/world/area_kpa/kpa_40 src/world/area_kpa/kpa_41 src/world/area_kpa/kpa_50 src/world/area_kpa/kpa_51 src/world/area_kpa/kpa_52 \
+	src/world/area_kpa/kpa_53 src/world/area_kpa/kpa_60 src/world/area_kpa/kpa_61 src/world/area_kpa/kpa_62 src/world/area_kpa/kpa_63 \
+	src/world/area_kpa/kpa_70 src/world/area_kpa/kpa_81 src/world/area_kpa/kpa_82 src/world/area_kpa/kpa_83 src/world/area_kpa/kpa_90 \
+	src/world/area_kpa/kpa_91 src/world/area_kpa/kpa_94 src/world/area_kpa/kpa_95 src/world/area_kpa/kpa_96 src/world/area_kzn/common \
+	src/world/area_kzn/kzn_01 src/world/area_kzn/kzn_02 src/world/area_kzn/kzn_03 src/world/area_kzn/kzn_04 src/world/area_kzn/kzn_05 \
+	src/world/area_kzn/kzn_06 src/world/area_kzn/kzn_07 src/world/area_kzn/kzn_08 src/world/area_kzn/kzn_09 src/world/area_kzn/kzn_10 \
+	src/world/area_kzn/kzn_11 src/world/area_kzn/kzn_17 src/world/area_kzn/kzn_18 src/world/area_kzn/kzn_19 src/world/area_kzn/kzn_20 \
+	src/world/area_kzn/kzn_22 src/world/area_kzn/kzn_23 src/world/area_mac/mac_00 src/world/area_mac/mac_00/npc src/world/area_mac/mac_01 \
+	src/world/area_mac/mac_01/npc src/world/area_mac/mac_02 src/world/area_mac/mac_02/npc src/world/area_mac/mac_03 src/world/area_mac/mac_04 \
+	src/world/area_mac/mac_05 src/world/area_mac/mac_06 src/world/area_mac/machi src/world/area_mgm/mgm_00 src/world/area_mgm/mgm_01 \
+	src/world/area_mgm/mgm_02 src/world/area_mgm/mgm_03 src/world/area_mim/common src/world/area_mim/mim_01 src/world/area_mim/mim_02 \
+	src/world/area_mim/mim_03 src/world/area_mim/mim_04 src/world/area_mim/mim_05 src/world/area_mim/mim_06 src/world/area_mim/mim_07 \
+	src/world/area_mim/mim_08 src/world/area_mim/mim_09 src/world/area_mim/mim_10 src/world/area_mim/mim_11 src/world/area_mim/mim_12 \
+	src/world/area_nok/common src/world/area_nok/nok_01 src/world/area_nok/nok_02 src/world/area_nok/nok_03 src/world/area_nok/nok_04 \
+	src/world/area_nok/nok_11 src/world/area_nok/nok_12 src/world/area_nok/nok_13 src/world/area_nok/nok_14 src/world/area_nok/nok_15 \
+	src/world/area_obk/common src/world/area_obk/obk_01 src/world/area_obk/obk_02 src/world/area_obk/obk_03 src/world/area_obk/obk_04 \
+	src/world/area_obk/obk_05 src/world/area_obk/obk_06 src/world/area_obk/obk_07 src/world/area_obk/obk_08 src/world/area_obk/obk_09 \
+	src/world/area_omo/common src/world/area_omo/omo_01 src/world/area_omo/omo_02 src/world/area_omo/omo_03 src/world/area_omo/omo_04 \
+	src/world/area_omo/omo_05 src/world/area_omo/omo_06 src/world/area_omo/omo_07 src/world/area_omo/omo_08 src/world/area_omo/omo_09 \
+	src/world/area_omo/omo_10 src/world/area_omo/omo_11 src/world/area_omo/omo_12 src/world/area_omo/omo_13 src/world/area_omo/omo_14 \
+	src/world/area_omo/omo_15 src/world/area_omo/omo_16 src/world/area_omo/omo_17 src/world/area_osr/osr_00 src/world/area_osr/osr_01 \
+	src/world/area_osr/osr_02 src/world/area_osr/osr_03 src/world/area_osr/osr_04 src/world/area_pra/common src/world/area_pra/pra_01 \
+	src/world/area_pra/pra_02 src/world/area_pra/pra_03 src/world/area_pra/pra_04 src/world/area_pra/pra_05 src/world/area_pra/pra_06 \
+	src/world/area_pra/pra_09 src/world/area_pra/pra_10 src/world/area_pra/pra_11 src/world/area_pra/pra_12 src/world/area_pra/pra_13 \
+	src/world/area_pra/pra_14 src/world/area_pra/pra_15 src/world/area_pra/pra_16 src/world/area_pra/pra_18 src/world/area_pra/pra_19 \
+	src/world/area_pra/pra_20 src/world/area_pra/pra_21 src/world/area_pra/pra_22 src/world/area_pra/pra_27 src/world/area_pra/pra_28 \
+	src/world/area_pra/pra_29 src/world/area_pra/pra_31 src/world/area_pra/pra_32 src/world/area_pra/pra_33 src/world/area_pra/pra_34 \
+	src/world/area_pra/pra_35 src/world/area_pra/pra_36 src/world/area_pra/pra_37 src/world/area_pra/pra_38 src/world/area_pra/pra_39 \
+	src/world/area_pra/pra_40 src/world/area_sam/common src/world/area_sam/sam_01 src/world/area_sam/sam_02 src/world/area_sam/sam_03 \
+	src/world/area_sam/sam_04 src/world/area_sam/sam_05 src/world/area_sam/sam_06 src/world/area_sam/sam_07 src/world/area_sam/sam_08 \
+	src/world/area_sam/sam_09 src/world/area_sam/sam_10 src/world/area_sam/sam_11 src/world/area_sam/sam_12 src/world/area_sbk/sbk_00 \
+	src/world/area_sbk/sbk_01 src/world/area_sbk/sbk_02 src/world/area_sbk/sbk_03 src/world/area_sbk/sbk_04 src/world/area_sbk/sbk_05 \
+	src/world/area_sbk/sbk_06 src/world/area_sbk/sbk_10 src/world/area_sbk/sbk_11 src/world/area_sbk/sbk_12 src/world/area_sbk/sbk_13 \
+	src/world/area_sbk/sbk_14 src/world/area_sbk/sbk_15 src/world/area_sbk/sbk_16 src/world/area_sbk/sbk_20 src/world/area_sbk/sbk_21 \
+	src/world/area_sbk/sbk_22 src/world/area_sbk/sbk_23 src/world/area_sbk/sbk_24 src/world/area_sbk/sbk_25 src/world/area_sbk/sbk_26 \
+	src/world/area_sbk/sbk_30 src/world/area_sbk/sbk_31 src/world/area_sbk/sbk_32 src/world/area_sbk/sbk_33 src/world/area_sbk/sbk_34 \
+	src/world/area_sbk/sbk_35 src/world/area_sbk/sbk_36 src/world/area_sbk/sbk_40 src/world/area_sbk/sbk_41 src/world/area_sbk/sbk_42 \
+	src/world/area_sbk/sbk_43 src/world/area_sbk/sbk_44 src/world/area_sbk/sbk_45 src/world/area_sbk/sbk_46 src/world/area_sbk/sbk_50 \
+	src/world/area_sbk/sbk_51 src/world/area_sbk/sbk_52 src/world/area_sbk/sbk_53 src/world/area_sbk/sbk_54 src/world/area_sbk/sbk_55 \
+	src/world/area_sbk/sbk_56 src/world/area_sbk/sbk_60 src/world/area_sbk/sbk_61 src/world/area_sbk/sbk_62 src/world/area_sbk/sbk_63 \
+	src/world/area_sbk/sbk_64 src/world/area_sbk/sbk_65 src/world/area_sbk/sbk_66 src/world/area_sbk/sbk_99 src/world/area_tik/common \
+	src/world/area_tik/tik_01 src/world/area_tik/tik_02 src/world/area_tik/tik_03 src/world/area_tik/tik_04 src/world/area_tik/tik_05 \
+	src/world/area_tik/tik_06 src/world/area_tik/tik_07 src/world/area_tik/tik_08 src/world/area_tik/tik_09 src/world/area_tik/tik_10 \
+	src/world/area_tik/tik_12 src/world/area_tik/tik_14 src/world/area_tik/tik_15 src/world/area_tik/tik_17 src/world/area_tik/tik_18 \
+	src/world/area_tik/tik_19 src/world/area_tik/tik_20 src/world/area_tik/tik_21 src/world/area_tik/tik_22 src/world/area_tik/tik_23 \
+	src/world/area_tik/tik_24 src/world/area_tik/tik_25 src/world/area_trd/trd_00 src/world/area_trd/trd_01 src/world/area_trd/trd_02 \
+	src/world/area_trd/trd_03 src/world/area_trd/trd_04 src/world/area_trd/trd_05 src/world/area_trd/trd_06 src/world/area_trd/trd_07 \
+	src/world/area_trd/trd_08 src/world/area_trd/trd_09 src/world/area_trd/trd_10 src/world/area_tst/tst_01 src/world/area_tst/tst_02 \
+	src/world/area_tst/tst_03 src/world/area_tst/tst_04 src/world/area_tst/tst_10 src/world/area_tst/tst_11 src/world/area_tst/tst_12 \
+	src/world/area_tst/tst_13 src/world/area_tst/tst_20 src/world/common/atomic src/world/common/complete src/world/common/enemy \
+	src/world/common/enemy/ai src/world/common/entity src/world/common/lava_piranha src/world/common/npc src/world/common/todo src/world/common/util \
+	src/world/model_anim/kzn src/world/partner src/world/script_api
+SOURCES := $(LUS_SOURCES) $(TORCH_SOURCES) $(GAME_SOURCES)
+
+INCLUDES := $(LUS_INCLUDES) $(TORCH_INCLUDES) ignored/assets/us ignored/include include include/libultra include/PR include/assets src/port src \
+	actors levels include include/PR spdlog/include include/assets include/assets/actors \
+	include/assets/assets include/assets/bin include/assets/levels include/assets/textures \
+	src/audio src/buffers src/engine src/game src/goddard src/menu src/pc src/port src/port/Enhancements \
+	src/port/enhancements/game-interactor src/port/api textures src .
+
+LIBS = -lstorm -lgfxd -lzip -lbzip2 -lzstd -lz -lyaml-cpp -llzma -lssl -lcrypto -lstdc++ -lpng \
+	-Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lopenal \
+	-ltinyxml2 -lSDL2 -lvorbisfile -lvorbis -logg $(VITAGL_LIB) -lvitashark -lSceShaccCgExt -ltaihen_stub -lmathneon -lSceAudioIn_stub \
+	-lSceIme_stub -lSceKernelDmacMgr_stub -lSceGxm_stub -lSceDisplay_stub -lSceTouch_stub -lSceHid_stub -lSceCtrl_stub -lSceNet_stub \
+	-lSceNetCtl_stub -lSceCommonDialog_stub -lSceAudio_stub -lSceSysmodule_stub -lSceMotion_stub -lSceAppUtil_stub \
+	-lSceAppMgr_stub -lSceShaccCg_stub -lScePower_stub -lSceNpTrophy_stub
+
+FINAL_SOURCES := f
+OBJECT_RESPONSE := $(TARGET).objects.rsp
+PORT_O2R := paperboat.o2r
+
+CFILES := $(foreach dir,$(SOURCES), $(wildcard $(dir)/*.c)) $(LUS_ROOT)/imgui/backends/imgui_impl_opengl3.c $(LUS_ROOT)/imgui/backends/imgui_impl_sdl2.c
+CPPFILES := $(foreach dir,$(SOURCES), $(wildcard $(dir)/*.cpp))
+
+CFILES := $(filter-out %.inc.c, $(CFILES))
+CFILES := $(filter-out bin/eu/%, $(CFILES))
+CFILES := $(filter-out src/os/% src/boot/% src/effects/gfx/% %_jp.c %_fr.c %_es.c %_de.c %_en.c %_en_de.c %_pal.c %_ique.c, $(CFILES))
+CFILES := $(filter-out %/unused_gfx.c %/filemenu_selectlanguage.c %/npc_composer.c %/npc_hint_dryite_companion.c %/npc_hint_dryite.c %/npc_merlee.c %/npc_moustafa.c %/npc_shop_owner.c, $(CFILES))
+CFILES := $(filter-out %/kzn_19_anim%.c %/hos_10/narrator.c %/battle/area/sam2/dlist.c %/battle/area/sam2/vtx.c %/pra_02/entity.c, $(CFILES))
+CPPFILES := $(filter-out %.inc.cpp, $(CPPFILES))
+
+OBJS := $(CFILES:.c=.o) $(CPPFILES:.cpp=.o) \
+	$(LUS_ROOT)/imgui/backends/imgui_impl_opengl3.o \
+	$(LUS_ROOT)/imgui/backends/imgui_impl_sdl2.o
+
+OBJS_PREPARE := $(CFILES:.c=.ok) $(CPPFILES:.cpp=.ok) \
+	$(LUS_ROOT)/imgui/backends/imgui_impl_opengl3.ok \
+	$(LUS_ROOT)/imgui/backends/imgui_impl_sdl2.ok
+
+OBJS_CLEAN := $(CFILES:.c=.oc) $(CPPFILES:.cpp=.oc) \
+	$(LUS_ROOT)/imgui/backends/imgui_impl_opengl3.oc \
+	$(LUS_ROOT)/imgui/backends/imgui_impl_sdl2.oc
+
+FINAL_OBJS := $(foreach dir,$(FINAL_SOURCES), $(wildcard $(dir)/*.o))
+
+CVAR_PREFIX_RANDOMIZER_ENHANCEMENT := gRandoEnhancements
+CVAR_PREFIX_RANDOMIZER_SETTING     := gRandoSettings
+CVAR_PREFIX_COSMETIC               := gCosmetics
+CVAR_PREFIX_AUDIO                  := gAudioEditor
+CVAR_PREFIX_CHEAT                  := gCheats
+CVAR_PREFIX_ENHANCEMENT            := gEnhancements
+CVAR_PREFIX_SETTING                := gSettings
+CVAR_PREFIX_WINDOW                 := gOpenWindows
+CVAR_PREFIX_TRACKER                := gTrackers
+CVAR_PREFIX_DEVELOPER_TOOLS        := gDeveloperTools
+CVAR_PREFIX_GENERAL                := gGeneral
+CVAR_PREFIX_REMOTE                 := gRemote
+CVAR_PREFIX_GAMEPLAY_STATS         := gGameplayStats
+CVAR_PREFIX_TIME_DISPLAY           := gTimeDisplay
+PAPERBOAT_VITA_GIT_BRANCH          := $(shell git branch --show-current)
+PAPERBOAT_VITA_GIT_COMMIT          := $(shell git rev-parse --short=7 HEAD)
+
+PREFIX = arm-vita-eabi
+CC  = $(PREFIX)-gcc
+CXX = $(PREFIX)-g++
+
+CFLAGS = -g -Wl,-q,--allow-multiple-definition,--wrap,pte_osSemaphorePost,--pic-veneer -O3 -ffast-math -fno-short-enums -fsigned-char \
+	$(foreach dir,$(INCLUDES),-I$(dir)) -fno-strict-aliasing -fno-optimize-sibling-calls \
+	-Wno-narrowing -DIMGUI_IMPL_OPENGL_ES2 -DSPDLOG_ACTIVE_LEVEL=6 \
+	-I$(VITASDK)/$(PREFIX)/include/SDL2 -DENABLE_OPENGL=1 -DNON_EQUIVALENT=1 \
+	-D_LANGUAGE_C -D_USE_MATH_DEFINES -DCIMGUI_DEFINE_ENUMS_AND_STRUCTS -DNAUDIO_SUPPORT \
+	-DAVOID_UB=1 -DPAPERBOAT_ASSET_YAML_COUNT=235 -DPAPERBOAT_NATIVE_FILE_DIALOG=0 \
+	-DPAPERBOAT_VITA_GIT_BRANCH=\"$(PAPERBOAT_VITA_GIT_BRANCH)\" -DPAPERBOAT_VITA_GIT_COMMIT=\"$(PAPERBOAT_VITA_GIT_COMMIT)\" \
+	-DVERSION_US=1 -DVERSION=us -DPORT -DMODERN_COMPILER -D__CTX__ -DF3DEX_GBI_2 -DENABLE_RUMBLE=1 -DIMGUI_DEFINE_MATH_OPERATORS -DPM64_SUPPORT \
+	-DCVAR_PREFIX_RANDOMIZER_ENHANCEMENT=\"$(CVAR_PREFIX_RANDOMIZER_ENHANCEMENT)\" \
+	-DCVAR_PREFIX_RANDOMIZER_SETTING=\"$(CVAR_PREFIX_RANDOMIZER_SETTING)\" \
+	-DCVAR_PREFIX_COSMETIC=\"$(CVAR_PREFIX_COSMETIC)\" \
+	-DCVAR_PREFIX_AUDIO=\"$(CVAR_PREFIX_AUDIO)\" \
+	-DCVAR_PREFIX_CHEAT=\"$(CVAR_PREFIX_CHEAT)\" \
+	-DCVAR_PREFIX_ENHANCEMENT=\"$(CVAR_PREFIX_ENHANCEMENT)\" \
+	-DCVAR_PREFIX_SETTING=\"$(CVAR_PREFIX_SETTING)\" \
+	-DCVAR_PREFIX_WINDOW=\"$(CVAR_PREFIX_WINDOW)\" \
+	-DCVAR_PREFIX_TRACKER=\"$(CVAR_PREFIX_TRACKER)\" \
+	-DCVAR_PREFIX_DEVELOPER_TOOLS=\"$(CVAR_PREFIX_DEVELOPER_TOOLS)\" \
+	-DCVAR_PREFIX_GENERAL=\"$(CVAR_PREFIX_GENERAL)\" \
+	-DCVAR_PREFIX_REMOTE=\"$(CVAR_PREFIX_REMOTE)\" \
+	-DCVAR_PREFIX_GAMEPLAY_STATS=\"$(CVAR_PREFIX_GAMEPLAY_STATS)\" \
+	-DCVAR_PREFIX_TIME_DISPLAY=\"$(CVAR_PREFIX_TIME_DISPLAY)\" \
+	-DCVAR_VSYNC_ENABLED=\"gVsyncEnabled\" \
+	-DCVAR_Z_FIGHTING_MODE=\"gZFightingMode\" \
+	-DCVAR_NEW_FILE_DROPPED=\"gNewFileDropped\" \
+	-DCVAR_DROPPED_FILE=\"gDroppedFile\" \
+	-DCVAR_INTERNAL_RESOLUTION=\"gInternalResolution\" \
+	-DCVAR_MSAA_VALUE=\"gMSAAValue\" \
+	-DCVAR_SDL_WINDOWED_FULLSCREEN=\"gSdlWindowedFullscreen\" \
+	-DCVAR_TEXTURE_FILTER=\"gTextureFilter\" \
+	-DCVAR_IMGUI_CONTROLLER_NAV=\"gControlNav\" \
+	-DCVAR_CONSOLE_WINDOW_OPEN=\"gConsoleEnabled\" \
+	-DCVAR_CONTROLLER_CONFIGURATION_WINDOW_OPEN=\"gControllerConfigurationEnabled\" \
+	-DCVAR_CONTROLLER_DISCONNECTED_WINDOW_OPEN=\"gControllerDisconnectedWindowEnabled\" \
+	-DCVAR_CONTROLLER_REORDERING_WINDOW_OPEN=\"gControllerReorderingWindowEnabled\" \
+	-DCVAR_GFX_DEBUGGER_WINDOW_OPEN=\"gGfxDebuggerEnabled\" \
+	-DCVAR_STATS_WINDOW_OPEN=\"gStatsEnabled\" \
+	-DCVAR_ENABLE_MULTI_VIEWPORTS=\"gEnableMultiViewports\" \
+	-DCVAR_LOW_RES_MODE=\"gLowResMode\" \
+	-DCVAR_SIMULATED_INPUT_LAG=\"gSimulatedInputLag\" \
+	-DCVAR_GAME_OVERLAY_FONT=\"gOverlayFont\" \
+	-DCVAR_MENU_BAR_OPEN=\"gOpenMenuBar\" \
+	-DCVAR_PREFIX_CONTROLLERS=\"gControllers\" \
+	-DCVAR_PREFIX_ADVANCED_RESOLUTION=\"gAdvancedResolution\" \
+	-DCVAR_AUDIO_CHANNELS_SETTING=\"gAudioChannelsSetting\" \
+	-DCVAR_ALLOW_BACKGROUND_INPUTS=\"gAllowBackgroundInputs\" \
+	-DCVAR_SCRIPT_SAFE_LEVEL=\"gScriptSafeLevel\"
+
+CXXFLAGS = $(CFLAGS) -U_LANGUAGE_C -D_LANGUAGE_C_PLUS_PLUS -fexceptions -std=gnu++20 -fpermissive
+ASFLAGS  = $(CFLAGS)
+
+LUS_INSTALL_CONFIG := $(LUS_ROOT)/src/ship/install_config.h
+
+$(LUS_INSTALL_CONFIG):
+	@echo #define CMAKE_INSTALL_PREFIX "." > $@
+
+$(OBJS): | $(LUS_INSTALL_CONFIG)
+
+DEPFILES := $(OBJS:.o=.d)
+-include $(DEPFILES)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -MMD -MP -c -o $@ $<
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -MMD -MP -c -o $@ $<
+
+.PHONY: all prepare objects port_archive debug-self
+
+all: $(TARGET).vpk
+
+$(TARGET).vpk: $(TARGET).velf port_archive $(DEBUG_SELF)
+	vita-make-fself -c -s $< eboot.bin
+	vita-mksfoex -s TITLE_ID=$(TITLE) -d ATTRIBUTE2=12 "$(TARGET)" param.sfo
+	vita-pack-vpk -s param.sfo -b eboot.bin $(TARGET).vpk \
+		-a livearea/icon0.png=sce_sys/icon0.png \
+		-a livearea/bg.png=sce_sys/livearea/contents/bg.png \
+		-a livearea/startup.png=sce_sys/livearea/contents/startup.png \
+		-a livearea/template.xml=sce_sys/livearea/contents/template.xml \
+		-a $(PORT_O2R)=$(PORT_O2R)
+
+$(DEBUG_SELF): $(TARGET).velf $(VITA_MAKE_FSELF_DEBUG)
+	$(PYTHON) $(VITA_MAKE_FSELF_DEBUG) "$<" "$(RAZOR_SELF)"
+
+debug-self: $(DEBUG_SELF)
+
+port_archive:
+	@cd port && cmake -E tar cf ../$(PORT_O2R) --format=zip -- fonts textures
+
+prepare: $(OBJECT_RESPONSE)
+
+$(OBJECT_RESPONSE): $(OBJS)
+	$(file >$@,$(OBJS))
+	@echo Generated $@ with Vita object list
+
+%.oc:
+	@rm -rf $(@:c=)
+
+%.velf: %.elf
+	@copy /Y $< $<.unstripped.elf >nul
+	$(PREFIX)-strip -g $<
+	vita-elf-create $< $@
+
+$(VITAGL_LIB):
+	$(MAKE) -C $(VITAGL_DIR) -j8 $(VITAGL_FLAGS)
+
+$(TARGET).elf: $(OBJECT_RESPONSE) $(VITAGL_LIB)
+	$(CXX) $(CXXFLAGS) @$(OBJECT_RESPONSE) $(LIBS) -o $@
+
+objects: $(OBJS)
+
+clean: $(OBJS_CLEAN)
+	@rm -rf $(TARGET).velf $(TARGET).elf $(TARGET).elf.unstripped.elf $(FINAL_OBJS) $(DEPFILES) $(OBJECT_RESPONSE) $(PORT_O2R) eboot.bin $(TARGET).vpk param.sfo $(RAZOR_SELF) $(DEBUG_SELF) $(LUS_INSTALL_CONFIG)

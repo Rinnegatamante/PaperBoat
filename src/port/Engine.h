@@ -54,6 +54,13 @@ uint32_t OTRGetGameRenderHeight(void);
 #include <SDL2/SDL.h>
 #include <fast/interpreter.h>
 #include <libultraship.h>
+#ifdef __vita__
+#include <robin_hood.h>
+using GameEngineMtxReplacementMap = robin_hood::unordered_map<Mtx*, MtxF>;
+#else
+#include <unordered_map>
+using GameEngineMtxReplacementMap = std::unordered_map<Mtx*, MtxF>;
+#endif
 
 #ifndef IDYES
 #define IDYES 6
@@ -95,7 +102,7 @@ class GameEngine {
     }
     static void RelaunchIfRequested(int argc, char* argv[]);
 
-    static void RunCommands(Gfx* Commands, const std::vector<std::unordered_map<Mtx*, MtxF>>& mtx_replacements);
+    static void RunCommands(Gfx* Commands, const std::vector<GameEngineMtxReplacementMap>& mtx_replacements);
     static void Destroy();
     static uint32_t GetInterpolationFPS();
     static uint32_t GetInterpolationFrameCount();

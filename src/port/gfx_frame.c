@@ -42,6 +42,8 @@ void Graphics_InitializeTask(void) {
 void Graphics_ThreadUpdate(void) {
     gSysFrameCount++;
 
+    port_begin_shading_palette_frame();
+
     // Initialize frame pointers
     Graphics_InitializeTask();
 

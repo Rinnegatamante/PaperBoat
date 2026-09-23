@@ -109,3 +109,11 @@ CMakeSettings.json
 CMakeUserPresets.json
 *.exe
 /.vs
+
+*.velf
+*.vpk
+*.bin
+*.sfo
+*.self
+*.d
+libultraship

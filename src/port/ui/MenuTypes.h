@@ -276,7 +276,9 @@ static const std::unordered_map<Fast::WindowBackend, const char*> windowBackends
     { Fast::WindowBackend::FAST3D_DXGI_DX11, "DirectX" },
     { Fast::WindowBackend::FAST3D_SDL_OPENGL, "OpenGL" },
     { Fast::WindowBackend::FAST3D_SDL_METAL, "Metal" },
+#ifndef __vita__
     { Fast::WindowBackend::FAST3D_SDL_VULKAN, "Vulkan" },
+#endif
 };
 
 struct MenuInit {

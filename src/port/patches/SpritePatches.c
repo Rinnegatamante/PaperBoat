@@ -11,6 +11,10 @@ static PAL_PTR sShadingSourcePalette;
 static PAL_BIN sShadingPalettes[SHADING_PALETTE_COUNT][16];
 static s32 sShadingPaletteIdx;
 
+void port_begin_shading_palette_frame(void) {
+    sShadingPaletteIdx = 0;
+}
+
 void port_set_shading_source_palette(PAL_PTR palette) {
     sShadingSourcePalette = palette;
 }
@@ -117,11 +121,12 @@ void port_appendGfx_shading_palette(
     // between two colours, so fill it directly: opaque entries take the shadow tone.
     PAL_BIN* palette = sShadingPalettes[sShadingPaletteIdx];
     sShadingPaletteIdx = (sShadingPaletteIdx + 1) % SHADING_PALETTE_COUNT;
+    PAL_BIN newPalette[16];
     s32 opaque = 0;
     s32 transparent = 0;
     {
         const u8* source = (const u8*) port_sprite_palette_data(sShadingSourcePalette);
-        u8* out = (u8*) palette;
+        u8* out = (u8*) newPalette;
         const u16 shadow = ((shadowR >> 3) << 11) | ((shadowG >> 3) << 6) | ((shadowB >> 3) << 1) | 1;
         const u16 highlight = ((highlightR >> 3) << 11) | ((highlightG >> 3) << 6) | ((highlightB >> 3) << 1) | 1;
         s32 i;
@@ -138,11 +143,18 @@ void port_appendGfx_shading_palette(
         }
     }
 
+    const b32 paletteChanged = memcmp(palette, newPalette, sizeof(newPalette)) != 0;
+    if (paletteChanged) {
+        memcpy(palette, newPalette, sizeof(newPalette));
+    }
+
     // HD art is then shaded by its own silhouette rather than the raster's
     gDPPaletteMask(gMainGfxPos++, palette, opaque, transparent);
     gDPLoadTLUT_pal16(gMainGfxPos++, 1, palette);
     // Drop textures cached against this palette address: the ring comes back to it later.
-    gDPInvalTexByPalette(gMainGfxPos++, palette);
+    if (paletteChanged) {
+        gDPInvalTexByPalette(gMainGfxPos++, palette);
+    }
 
     gSPSetOtherMode(
         gMainGfxPos++, G_SETOTHERMODE_H, 4, 18,

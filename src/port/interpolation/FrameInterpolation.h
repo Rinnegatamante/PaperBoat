@@ -4,8 +4,14 @@
 #include "common_structs.h"
 
 #ifdef __cplusplus
+#ifdef __vita__
+#include <robin_hood.h>
+using FrameInterpolationMap = robin_hood::unordered_map<Mtx*, MtxF>;
+#else
 #include <unordered_map>
-std::unordered_map<Mtx*, MtxF> FrameInterpolation_Interpolate(float step);
+using FrameInterpolationMap = std::unordered_map<Mtx*, MtxF>;
+#endif
+FrameInterpolationMap FrameInterpolation_Interpolate(float step);
 
 extern "C" {
 #endif

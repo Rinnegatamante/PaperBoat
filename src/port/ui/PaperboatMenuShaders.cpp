@@ -1,12 +1,15 @@
 #include "PaperboatMenu.h"
 
+#ifndef __vita__
 #include <ship/window/gui/ShaderSettingsWindow.h>
+#endif
 
 namespace PaperboatGui {
 
 using namespace UIWidgets;
 
 void PaperboatMenu::AddMenuShaderSettings() {
+#ifndef __vita__
     AddMenuEntry("Shaders", CVAR_SETTING("Menu.ShadersSidebarSection"));
 
     AddSidebarEntry("Shaders", "Shader Packs", 1);
@@ -22,6 +25,7 @@ void PaperboatMenu::AddMenuShaderSettings() {
                 "values declared by custom shaders."
             )
         );
+#endif
 }
 
 } // namespace PaperboatGui

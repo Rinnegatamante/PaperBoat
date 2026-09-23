@@ -22,7 +22,9 @@
 #include <cstring>
 #include <unistd.h>
 #endif
+#ifndef __vita__
 #include <BS_thread_pool.hpp>
+#endif
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -68,6 +70,10 @@
 #include <ship/window/gui/resource/Font.h>
 #include <thread>
 #include <unordered_map>
+
+#ifdef __vita__
+#include <vitasdk.h>
+#endif
 
 // The decomp EVT script API defines a function-like `Add(VAR, VALUE)` macro that
 // swallows ComponentList::Add(). Engine.cpp does not build EVT scripts, so we drop it.
@@ -190,9 +196,7 @@ GameEngine::GameEngine() {
     AllocConsole();
 #endif
 
-    this->context = Ship::Context::CreateUninitializedInstance(
-        "Paperboat", "boat", Ship::Context::GetPathRelativeToAppDirectory("paperboat.cfg.json")
-    );
+    this->context = Ship::Context::CreateUninitializedInstance("Paperboat", "boat", "paperboat.cfg.json");
     gShipContext = this->context;
 
     this->context->InitLogging();
@@ -237,6 +241,10 @@ void GameEngine::FinishInit() {
 
     auto archiveManager = Ship::Context::GetRawInstance()->GetResourceManager()->GetArchiveManager();
 
+#if defined(__SWITCH__) || defined(__WIIU__) || defined(__vita__)
+    CVarRegisterInteger(CVAR_IMGUI_CONTROLLER_NAV, 1);
+#endif
+
     for (const auto& archive : sRomArchives) {
         const auto romPath = Ship::Context::LocateFileAcrossAppDirs(archive);
         if (std::filesystem::exists(romPath)) {
@@ -259,7 +267,11 @@ void GameEngine::FinishInit() {
     spdlog::flush_on(spdlog::level::warn);
 #endif
 
-    Ship::Context::GetRawInstance()->InitAudio({ .SampleRate = 32000, .SampleLength = 1024, .DesiredBuffered = 1680 });
+    Ship::Context::GetRawInstance()->InitAudio({
+        .SampleRate = 32000,
+        .SampleLength = 1024,
+        .DesiredBuffered = 1680
+    });
 
     // Opt in to texture path memoization.
     if (gsFast3dWindow != nullptr) {
@@ -387,6 +399,7 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
     std::string file;
     std::filesystem::path ownPath;
 
+#ifndef __vita__
     if (!std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("assets"))) {
         PaperboatGui::RegisterPopup(
             "Extractor assets not found",
@@ -399,8 +412,11 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
             }
         );
     }
+#endif
 
+#ifndef __vita__
     std::shared_ptr<BS::thread_pool> threadPool = std::make_shared<BS::thread_pool>(1);
+#endif
 
     while (!extractDone) {
         if (PaperboatGui::PopupsQueued() > 0 || extracting) {
@@ -418,6 +434,8 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                 if (portArchiveExists) {
 #ifdef _WIN32
                     extractStep = ES_WINDOWS;
+#elif defined(__vita__)
+                    extractStep = ES_VERIFY;
 #else
                     extractStep = ES_EXTRACT;
 #endif
@@ -455,7 +473,9 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                                 "PaperBoat is running in a temp folder.\nExtract the .zip and "
                                 "run again.",
                                 "OK", "", [&]() {
+#ifndef __vita__
                                     threadPool = nullptr;
+#endif
                                     gsFast3dWindow = nullptr;
                                     context = nullptr;
                                     exit(0);
@@ -486,7 +506,9 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                                         fclose(tfile);
                                     }
                                     PathTestCleanup(tfile);
+#ifndef __vita__
                                     threadPool = nullptr;
+#endif
                                     gsFast3dWindow = nullptr;
                                     context = nullptr;
                                     exit(0);
@@ -500,7 +522,9 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                                     "PaperBoat does not have proper file permissions.\nPlease move "
                                     "it to a folder that does and run again.",
                                     "OK", "", [&]() {
+#ifndef __vita__
                                         threadPool = nullptr;
+#endif
                                         gsFast3dWindow = nullptr;
                                         context = nullptr;
                                         exit(0);
@@ -519,7 +543,9 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                                 "issues.\nPlease move it to a folder outside of OneDrive, like "
                                 "the root of a\ndrive (e.g. \"C:\\Games\\PaperBoat\").",
                                 "OK", "", [&]() {
+#ifndef __vita__
                                     threadPool = nullptr;
+#endif
                                     gsFast3dWindow = nullptr;
                                     context = nullptr;
                                     exit(0);
@@ -554,7 +580,9 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                             "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
                             [&]() { promptStep = PS_LOCAL; },
                             [&]() {
+#ifndef __vita__
                                 threadPool = nullptr;
+#endif
                                 gsFast3dWindow = nullptr;
                                 context = nullptr;
                                 exit(0);
@@ -618,10 +646,14 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                             extracting = true;
                             extractStarted = true;
                             file = extract.GetRomPath();
-                            threadPool->submit_task([&]() -> void {
+#ifndef __vita__
+                            (void)threadPool->submit_task([&]() -> void {
+#endif
                                 extract.GenerateOTR(extractCount, totalExtract, "boat");
                                 extracting = false;
+#ifndef __vita__
                             });
+#endif
                         };
                         if (args.empty()) {
                             promptStep = PS_WAIT;
@@ -644,7 +676,7 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                 break;
             }
             case ES_EXTRACT_ARGS: {
-#if !defined(__SWITCH__) && !defined(__WIIU__)
+#if !defined(__SWITCH__) && !defined(__WIIU__) && !defined(__vita__)
                 if (args.size() == 0) {
                     PaperboatGui::RegisterPopup(
                         "Run PaperBoat", "All files have been processed. Run PaperBoat?", "Yes", "No",
@@ -674,14 +706,14 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                         std::string msg = "Archive for current ROM, " + archive + ", already exists.\nExtract again?";
                         PaperboatGui::RegisterPopup("Confirm Re-extract", msg.c_str(), "Yes", "No", [&]() {
                             extracting = true;
-                            threadPool->submit_task([&]() -> void {
+                            (void)threadPool->submit_task([&]() -> void {
                                 extract.GenerateOTR(extractCount, totalExtract, "boat");
                                 extracting = false;
                             });
                         });
                     } else {
                         extracting = true;
-                        threadPool->submit_task([&]() -> void {
+                        (void)threadPool->submit_task([&]() -> void {
                             extract.GenerateOTR(extractCount, totalExtract, "boat");
                             extracting = false;
                         });
@@ -718,7 +750,9 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
                                        "and relaunch.";
                         }
                         PaperboatGui::RegisterPopup("Extraction Error", errorMsg.c_str(), "OK", "", [&]() {
+#ifndef __vita__
                             threadPool = nullptr;
+#endif
                             gsFast3dWindow = nullptr;
                             context = nullptr;
                             exit(0);
@@ -735,7 +769,9 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
 
     render:
         if (!WindowIsRunning()) {
+#ifndef __vita__
             threadPool = nullptr;
+#endif
             gsFast3dWindow = nullptr;
             context = nullptr;
             exit(0);
@@ -809,9 +845,11 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
         ImGui::PopStyleColor(2);
     }
 
+#ifndef __vita__
     threadPool = nullptr;
+#endif
 
-#if !defined(__SWITCH__) && !defined(__WIIU__)
+#if !defined(__SWITCH__) && !defined(__WIIU__) && !defined(__vita__)
     CheckAndCreateModFolder();
 #endif
 
@@ -833,7 +871,7 @@ void GameEngine::Create(int argc, char* argv[]) {
 bool GameEngine::sRelaunchRequested = false;
 
 bool GameEngine::CanRelaunch() {
-#if defined(_WIN32) || ((defined(__linux__) || defined(__APPLE__)) && !defined(__ANDROID__))
+#if defined(_WIN32) || defined(__vita__) || ((defined(__linux__) || defined(__APPLE__)) && !defined(__ANDROID__))
     return true;
 #else
     return false;
@@ -860,6 +898,8 @@ void GameEngine::RelaunchIfRequested(int argc, char* argv[]) {
 #elif (defined(__linux__) || defined(__APPLE__)) && !defined(__ANDROID__)
     execv(argv[0], argv);
     SPDLOG_ERROR("Relaunch failed: execv error {}", strerror(errno));
+#elif defined(__vita__)
+    sceAppMgrLoadExec("app0:eboot.bin", nullptr, nullptr);
 #endif
 }
 
@@ -954,11 +994,13 @@ void GameEngine::StartFrame() const {
     const bool autoMipmaps = CVarGetInteger("gEnhancements.Mods.AutoMipmaps", 1) != 0;
     if (autoMipmaps != mPrevAutoMipmaps) {
         mPrevAutoMipmaps = autoMipmaps;
+#ifndef __vita__
         if (gsFast3dWindow != nullptr) {
             if (auto interpreter = gsFast3dWindow->GetInterpreterWeak().lock()) {
                 interpreter->SetAutoMipmapsEnabled(autoMipmaps);
             }
         }
+#endif
         SPDLOG_INFO("HD auto-mipmaps {}", autoMipmaps ? "enabled" : "disabled");
     }
 
@@ -1040,7 +1082,11 @@ void GameEngine::HandleAudioThread() {
 
             bool accepted = AudioPlayerBuffered() >= before + (frameSamples / 2);
             if (accepted && before == 0) {
-                SPDLOG_WARN("audio queue underran");
+                static uint32_t underrunCount = 0;
+                underrunCount++;
+                if (underrunCount == 1 || (underrunCount % 120) == 0) {
+                    SPDLOG_WARN("audio queue underrun ({} total)", underrunCount);
+                }
             }
         };
 
@@ -1138,7 +1184,7 @@ void GameEngine::AudioExit() {
     }
 }
 
-void GameEngine::RunCommands(Gfx* Commands, const std::vector<std::unordered_map<Mtx*, MtxF>>& mtx_replacements) {
+void GameEngine::RunCommands(Gfx* Commands, const std::vector<GameEngineMtxReplacementMap>& mtx_replacements) {
     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetRawInstance()->GetWindow());
 
     if (wnd == nullptr) {
@@ -1153,7 +1199,11 @@ void GameEngine::RunCommands(Gfx* Commands, const std::vector<std::unordered_map
     interpreter->mInterpolationIndex = 0;
 
     for (const auto& m : mtx_replacements) {
+#ifdef __vita__
+        wnd->DrawAndRunGraphicsCommands(Commands, m);
+#else
         wnd->DrawAndRunGraphicsCommands(Commands, m, {});
+#endif
         interpreter->mInterpolationIndex++;
     }
 }
@@ -1167,7 +1217,7 @@ void GameEngine::ProcessGfxCommands(Gfx* commands) {
     // Set microcode handler
     wnd->SetRendererUCode(UcodeHandlers::ucode_f3dex2);
 
-    std::vector<std::unordered_map<Mtx*, MtxF>> mtx_replacements;
+    std::vector<GameEngineMtxReplacementMap> mtx_replacements;
 
     int target_fps = GetInterpolationFPS();
     static int last_fps;
@@ -1209,22 +1259,38 @@ static const char* sOtrSignature = "__OTR__";
 // Writes one register of the shader custom-uniform file (uCustom[idx] in
 // shader templates). Registers 0-1 are engine built-ins; use 2..15.
 extern "C" void GameEngine_SetCustomUniform(uint8_t idx, const float values[4]) {
+#ifndef __vita__
     gfx_set_custom_uniform(idx, values);
+#else
+    (void)idx;
+    (void)values;
+#endif
 }
 
 // Registers a fullscreen post-processing pass (a prism shader template in the
 // o2r, e.g. "shaders/post/invert.shader"). Passes run in registration order
 // over the game image at the end of each frame. Returns a handle.
 extern "C" int GameEngine_RegisterPostPass(const char* o2rShaderPath) {
+#ifndef __vita__
     return gfx_register_post_pass(o2rShaderPath);
+#else
+    (void)o2rShaderPath;
+    return -1;
+#endif
 }
 
 extern "C" void GameEngine_UnregisterPostPass(int id) {
+#ifndef __vita__
     gfx_unregister_post_pass(id);
+#else
+    (void)id;
+#endif
 }
 
 extern "C" void GameEngine_ClearPostPasses(void) {
+#ifndef __vita__
     gfx_clear_post_passes();
+#endif
 }
 
 // Raw bytes for CPU-side consumers.
@@ -1318,7 +1384,7 @@ extern "C" void GameEngine_HoldFrame(void) {
 
 // C-callable wrapper for processing graphics commands
 extern "C" void GameEngine_ProcessGfxCommands(Gfx* commands) {
-    std::vector<std::unordered_map<Mtx*, MtxF>> mtx_replacements;
+    std::vector<GameEngineMtxReplacementMap> mtx_replacements;
     mtx_replacements.push_back({}); // Empty map for now, interpolation can be added later
     GameEngine::RunCommands(commands, mtx_replacements);
 }

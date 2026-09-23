@@ -371,7 +371,7 @@ bool Checkbox(const char* _label, bool* value, const CheckboxOptions& options) {
         true, style.FrameRounding
     );
     ImU32 check_col = ImGui::GetColorU32(ImGuiCol_CheckMark);
-    bool mixed_value = (g.LastItemData.ItemFlags & ImGuiItemFlags_MixedValue) != 0;
+    bool mixed_value = (g.LastItemData.InFlags & ImGuiItemFlags_MixedValue) != 0;
     if (mixed_value) {
         // Undocumented tristate/mixed/indeterminate checkbox (#2644)
         // This may seem awkwardly designed because the aim is to make
@@ -425,14 +425,14 @@ bool StateButton(const char* str_id, const char* label, ImVec2 size, ButtonOptio
     if (!ImGui::ItemAdd(bb, id))
         return false;
 
-    if (g.LastItemData.ItemFlags & ImGuiItemFlags_ButtonRepeat) {
+    if (g.LastItemData.InFlags & ImGuiItemFlags_ButtonRepeat) {
         ImGui::PushItemFlag(ImGuiItemFlags_ButtonRepeat, true);
     }
 
     bool hovered, held;
     bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
 
-    if (g.LastItemData.ItemFlags & ImGuiItemFlags_ButtonRepeat) {
+    if (g.LastItemData.InFlags & ImGuiItemFlags_ButtonRepeat) {
         ImGui::PopItemFlag(); // ImGuiItemFlags_ButtonRepeat;
     }
     PushStyleButton(options.color);
@@ -1059,7 +1059,7 @@ bool RadioButton(const char* label, bool active, const RadioButtonsOptions& opti
     if (pressed)
         ImGui::MarkItemEdited(id);
 
-    ImGui::RenderNavCursor(total_bb, id);
+    ImGui::RenderNavHighlight(total_bb, id);
     const int num_segment = window->DrawList->_CalcCircleAutoSegmentCount(radius);
     window->DrawList->AddCircleFilled(
         center, radius,

@@ -26,8 +26,8 @@ void is_debug_init(void) {
 
 // Overriding libc's printf/puts needs a linker that lets this definition win.
 // MSVC's does not, and wasm-ld rejects it ("duplicate symbol: printf"). Both
-// keep libc's; the IS-Viewer is cartridge hardware neither platform has.
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+// Keep the platform libc on ports; the IS-Viewer is N64 cartridge hardware.
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__) && !defined(__vita__)
 #define PAPERBOAT_OVERRIDE_LIBC_PRINT 1
 #endif
 
@@ -45,7 +45,13 @@ int __printf_chk(int flag, const char* restrict fmt, ...) {
     va_start(args, fmt);
     (void)flag;
 
+#ifdef __vita__
+    int ret = vprintf(fmt, args);
+    va_end(args);
+    return ret;
+#else
     return _Printf(is_debug_print, nullptr, fmt, args);
+#endif
 }
 
 #ifdef PAPERBOAT_OVERRIDE_LIBC_PRINT
@@ -59,14 +65,24 @@ void osSyncPrintf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
+#ifdef __vita__
+    vprintf(fmt, args);
+    va_end(args);
+#else
     _Printf(is_debug_print, nullptr, fmt, args);
+#endif
 }
 
 void rmonPrintf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
+#ifdef __vita__
+    vprintf(fmt, args);
+    va_end(args);
+#else
     _Printf(is_debug_print, nullptr, fmt, args);
+#endif
 }
 
 char* is_debug_print(char* arg0, const char* str, size_t count) {

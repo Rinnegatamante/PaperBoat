@@ -5,6 +5,22 @@
 #include "Engine.h"
 #include "port/interpolation/FrameInterpolation.h"
 
+#ifdef __vita__
+#include <vitasdk.h>
+#include <pthread.h>
+int _newlib_heap_size_user = 256 * 1024 * 1024;
+
+extern "C" int __wrap_pte_osSemaphorePost(SceUID handle, int count) {
+    SceKernelSemaInfo info;
+    info.size = sizeof(SceKernelSemaInfo);
+    sceKernelGetSemaInfo(handle, &info);
+    if (info.currentCount < info.maxCount) {
+        sceKernelSignalSema(handle, count);
+    }
+    return 0;
+}
+#endif
+
 #ifdef __EMSCRIPTEN__
 #include <SDL2/SDL.h>
 #include "port/web/WebUtils.h"
@@ -31,6 +47,31 @@ extern "C" void Graphics_PushFrame(Gfx* displayList) {
 
 #ifdef _WIN32
 int SDL_main(int argc, char** argv) {
+#elif defined(__vita__)
+extern "C" void* vita_main(void* argv);
+
+int main(int argc, char** argv) {
+    scePowerSetArmClockFrequency(444);
+    scePowerSetBusClockFrequency(222);
+    scePowerSetGpuClockFrequency(222);
+    scePowerSetGpuXbarClockFrequency(166);
+
+    sceIoMkdir("ux0:data/paperboat", 0777);
+    sceIoMkdir("ux0:data/paperboat/logs", 0777);
+    sceIoMkdir("ux0:data/paperboat/shader_cache", 0777);
+
+    pthread_t thread;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 2 * 1024 * 1024);
+    pthread_create(&thread, &attr, vita_main, nullptr);
+    pthread_attr_destroy(&attr);
+    return sceKernelExitDeleteThread(0);
+}
+
+void* vita_main(void* ignored) {
+    int argc = 0;
+    char** argv = nullptr;
 #else
 #if defined(__cplusplus) && defined(PLATFORM_IOS)
 extern "C"
@@ -76,5 +117,9 @@ extern "C"
     // write finishes in the page after the runtime exits.
     WebCache_SaveNoWait();
 #endif
+#ifdef __vita__
+    return nullptr;
+#else
     return 0;
+#endif
 }
