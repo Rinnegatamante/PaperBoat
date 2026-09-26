@@ -70,8 +70,8 @@ GAME_SOURCES := src src/audio src/audio/core src/battle src/battle/action_cmd sr
 	src/battle/common/stage/lib src/battle/move/hammer src/battle/move/item src/battle/move/jump src/battle/move/star_power src/battle/partner \
 	src/battle/states src/charset src/common src/common/battle src/dx src/effects src/effects/gfx src/entity src/entity/default src/entity/jan_iwa \
 	src/entity/model src/entity/sbk_omo src/evt src/filemenu src/gcc src/os src/os/nusys src/pause src/port src/port/android src/port/audio \
-	src/port/embedded src/port/enhancements src/port/enhancements/cheats src/port/enhancements/gameplay src/port/extractor src/port/importer \
-	src/port/interpolation src/port/patches src/port/save src/port/sprite src/port/ui src/port/ui/devtools/console src/port/ui/devtools/hooks \
+	src/port/DevTools src/port/embedded src/port/enhancements src/port/enhancements/cheats src/port/enhancements/gameplay src/port/extractor src/port/importer \
+	src/port/interpolation src/port/os src/port/patches src/port/save src/port/sprite src/port/ui src/port/ui/devtools/console src/port/ui/devtools/hooks \
 	src/port/ui/devtools/saveeditor src/port/ui/devtools/valueviewer src/port/web src/world src/world/action src/world/area_arn/arn_02 \
 	src/world/area_arn/arn_03 src/world/area_arn/arn_04 src/world/area_arn/arn_05 src/world/area_arn/arn_07 src/world/area_arn/arn_08 \
 	src/world/area_arn/arn_09 src/world/area_arn/arn_10 src/world/area_arn/arn_11 src/world/area_arn/arn_12 src/world/area_arn/arn_13 src/world/area_dgb \

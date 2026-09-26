@@ -1,6 +1,12 @@
+#include "port/ShipInit.hpp"
+#include "port/Engine.h"
+#include "port/hooks/Events.h"
+
 #include "common.h"
 #include "sprite.h"
 #include "port/patches/Patches.h"
+
+extern "C" {
 
 // The component's own palette, which the two-tone one is built from.
 static PAL_PTR sShadingSourcePalette;
@@ -45,9 +51,7 @@ void port_appendGfx_shading_palette(
     f32 var_f12_2;
     f32 shadowXZ;
     f32 facingDir;
-    f32 ex, ey, ez;
-    f32 pm02, pm12, pm22;
-    s32 scissorLeft, scissorRight;
+    f32 pm02, pm22;
 
     shadowMag = SQ(shadowX) + SQ(shadowY) + SQ(shadowZ);
 
@@ -67,18 +71,7 @@ void port_appendGfx_shading_palette(
         facingDir = -1.0f;
     }
 
-    if (facingDir < 0.0f) {
-        ex = mtx[0][2];
-        ey = mtx[1][2];
-        ez = -mtx[2][2];
-    } else {
-        ex = -mtx[0][2];
-        ey = mtx[1][2];
-        ez = mtx[2][2];
-    }
-
     pm02 = camera->mtxPerspective[0][2];
-    pm12 = camera->mtxPerspective[1][2];
     pm22 = camera->mtxPerspective[2][2];
 
     offsetX = ambientPower * ((shadowX * -pm22) + (shadowZ * pm02));
@@ -179,4 +172,5 @@ void port_appendGfx_shading_palette(
         ((lrs + 0x100 - 1) << 2) + (s32) (offsetX * facingDir),
         ((lrt + 0x100 - 1) << 2) + (s32) offsetY
     );
+}
 }

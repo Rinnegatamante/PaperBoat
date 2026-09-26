@@ -35,3 +35,22 @@ DEFINE_EVENT(OnPostSaveFileLoad);
 
 // Battle
 DEFINE_EVENT(OnBattleEffectsRemoved);
+
+DEFINE_EVENT(OnBlockWindowCheck,
+    int32_t* blockWindow;
+    int32_t* mashWindow;
+);
+
+DEFINE_EVENT(OnActionCommandDifficulty,
+    int32_t* difficultyLevel;
+);
+
+// World
+DEFINE_EVENT(OnMapLoad,
+    const char* mapName;
+);
+
+DEFINE_EVENT(OnPlayerSpeedUpdate,
+    float* walkSpeed;
+    float* runSpeed;
+);

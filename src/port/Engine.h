@@ -88,9 +88,6 @@ class GameEngine {
     void StartFrame() const;
     static bool GenAssetFile(bool exitOnFail = true);
     static void Create(int argc, char* argv[]);
-    static void HandleAudioThread();
-    static void StartAudioFrame();
-    static void EndAudioFrame();
     static void AudioInit();
     static void AudioExit();
     void FinishInit();
@@ -119,14 +116,7 @@ class GameEngine {
     mutable bool mPrevAutoMipmaps = true;
 
     static struct {
-        std::thread thread;
-        std::mutex mutex;
-        std::condition_variable cv_to_thread;
-        std::condition_variable cv_from_thread;
         bool running = false;
-        bool processing = false;
-        // Audio pacing shortfall, in thirds of a sample.
-        int32_t sampleDebtThirds = 0;
     } mAudio;
 };
 
@@ -163,6 +153,7 @@ void GameEngine_ReadController(void* pads);
 // Call when player raster cache overwrites a buffer with new image data,
 // since the Fast3D interpreter caches textures by pointer address.
 void GameEngine_InvalidateTextureCache(const void* addr);
+void GameEngine_PrefetchTextures(const char* group);
 void gfx_texture_cache_clear(void);
 
 // Save file path - returns path to "pm64.sav" in app directory
