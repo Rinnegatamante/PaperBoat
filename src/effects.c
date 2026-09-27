@@ -343,6 +343,37 @@ s32 load_effect(s32 effectIndex) {
         sharedData++;
     }
 
+#ifdef __vita__
+    if (i >= ARRAY_COUNT(gEffectSharedData)) {
+        s32 sharedIndex;
+
+        for (sharedIndex = 0; sharedIndex < ARRAY_COUNT(gEffectSharedData); sharedIndex++) {
+            EffectSharedData* candidate = &gEffectSharedData[sharedIndex];
+            b32 inUse = false;
+            s32 instanceIndex;
+
+            for (instanceIndex = 0; instanceIndex < ARRAY_COUNT(gEffectInstances); instanceIndex++) {
+                EffectInstance* instance = gEffectInstances[instanceIndex];
+
+                if (instance != nullptr && instance->shared == candidate) {
+                    inUse = true;
+                    break;
+                }
+            }
+
+            if (!inUse) {
+                candidate->graphics = nullptr;
+                candidate->flags = 0;
+                candidate->instanceCounter = 0;
+                osUnmapTLB(sharedIndex);
+                sharedData = candidate;
+                i = sharedIndex;
+                break;
+            }
+        }
+    }
+#endif
+
     // If no empty space was found, panic
     ASSERT(i < ARRAY_COUNT(gEffectSharedData));
 
