@@ -154,6 +154,7 @@ void GameEngine_ReadController(void* pads);
 // since the Fast3D interpreter caches textures by pointer address.
 void GameEngine_InvalidateTextureCache(const void* addr);
 void GameEngine_PrefetchTextures(const char* group);
+void GameEngine_WaitRendererIdle(void);
 void gfx_texture_cache_clear(void);
 
 // Save file path - returns path to "pm64.sav" in app directory

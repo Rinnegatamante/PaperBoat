@@ -29,6 +29,7 @@ extern void gfx_draw_frame(void);
 
 // C++ bridge function - defined in Game.cpp
 extern void Graphics_PushFrame(Gfx* displayList);
+extern void Graphics_WaitRendererIdle(void);
 
 void Graphics_InitializeTask(void) {
     // Select pool based on frame parity (double-buffering)
@@ -53,6 +54,8 @@ void Graphics_ThreadUpdate(void) {
     FrameInterpolation_RecordOpenChild("game_logic", 0);
     step_game_loop();
     FrameInterpolation_RecordCloseChild();
+
+    Graphics_WaitRendererIdle();
 
     // Build background display list (no submission)
     gfx_task_background();

@@ -75,6 +75,7 @@
 
 #ifdef __vita__
 #include <vitasdk.h>
+extern "C" void gfx_vita_backend_run_sync(void (*fn)(void*), void* arg);
 #endif
 
 // The decomp EVT script API defines a function-like `Add(VAR, VALUE)` macro that
@@ -790,7 +791,9 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
             exit(0);
         }
 
+#ifndef __vita__
         wnd->HandleEvents();
+#endif
         UIWidgets::Colors themeColor =
             static_cast<UIWidgets::Colors>(CVarGetInteger(CVAR_SETTING("Menu.Theme"), UIWidgets::Colors::LightBlue));
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
@@ -800,9 +803,13 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
             continue;
         }
 
+#ifdef __vita__
+        wnd->BeginGuiOnlyFrame();
+#else
         gui->StartDraw();
         wnd->StartFrame();
         wnd->RunGuiOnly();
+#endif
         if (extracting && !ImGui::IsPopupOpen("ROM Extraction")) {
             ImGui::OpenPopup("ROM Extraction");
         }
@@ -853,8 +860,12 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(2);
         }
+#ifdef __vita__
+        wnd->EndGuiOnlyFrame();
+#else
         gui->EndDraw();
         wnd->EndFrame();
+#endif
         ImGui::PopStyleColor(2);
     }
 
@@ -986,20 +997,25 @@ void GameEngine::StartFrame() const {
     // input. This fires the keyboard callbacks that set mKeyPressed state in
     // ControlDeck, so that WriteToPad() sees current key state when called from
     // update_input().
+#ifndef __vita__
     Ship::Context::GetRawInstance()->GetWindow()->HandleEvents();
+#endif
 
     const bool altAssets = CVarGetInteger("gEnhancements.Mods.AlternateAssets", 0) != 0;
     if (altAssets != mPrevAltAssets) {
+#ifdef __vita__
+        if (gsFast3dWindow != nullptr) {
+            gsFast3dWindow->WaitForRendererIdle();
+        }
+#endif
         mPrevAltAssets = altAssets;
         Ship::Context::GetRawInstance()->GetResourceManager()->SetAltAssetsEnabled(altAssets);
         //  gfx_texture_cache_clear();
         SPDLOG_INFO("Alt assets {}", altAssets ? "enabled" : "disabled");
         // Decode alt menu assets so they can draw more quickly.
         if (altAssets && gsFast3dWindow != nullptr) {
-            if (auto interpreter = gsFast3dWindow->GetInterpreterWeak().lock()) {
-                for (const char* group : { "ui/", "misc/pause/", "misc/starpoint/", "icons/", "party/" }) {
-                    interpreter->PrefetchReplacementGroup(group);
-                }
+            for (const char* group : { "ui/", "misc/pause/", "misc/starpoint/", "icons/", "party/" }) {
+                GameEngine_PrefetchTextures(group);
             }
         }
     }
@@ -1113,21 +1129,25 @@ void GameEngine::RunCommands(Gfx* Commands, const std::vector<GameEngineMtxRepla
         return;
     }
 
-    auto interpreter = wnd->GetInterpreterWeak().lock().get();
-
+#ifndef __vita__
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
+#endif
 
+#ifdef __vita__
+    int32_t interpolationIndex = 0;
+    for (const auto& m : mtx_replacements) {
+        wnd->DrawAndRunGraphicsCommands(Commands, m, {}, interpolationIndex++);
+    }
+#else
+    auto interpreter = wnd->GetInterpreterWeak().lock().get();
     interpreter->mInterpolationIndex = 0;
 
     for (const auto& m : mtx_replacements) {
-#ifdef __vita__
-        wnd->DrawAndRunGraphicsCommands(Commands, m);
-#else
         wnd->DrawAndRunGraphicsCommands(Commands, m, {});
-#endif
         interpreter->mInterpolationIndex++;
     }
+#endif
 }
 
 void GameEngine::ProcessGfxCommands(Gfx* commands) {
@@ -1386,10 +1406,31 @@ extern "C" void GameEngine_LogStackTrace(const char* label) {
 
 extern "C" void GameEngine_PrefetchTextures(const char* group) {
     if (gsFast3dWindow != nullptr) {
+#ifdef __vita__
+        struct Args {
+            Fast::Fast3dWindow* window;
+            const char* group;
+        } args = { gsFast3dWindow.get(), group };
+        gfx_vita_backend_run_sync([](void* raw) {
+            auto* args = static_cast<Args*>(raw);
+            if (auto interpreter = args->window->GetInterpreterWeak().lock()) {
+                interpreter->PrefetchReplacementGroup(args->group);
+            }
+        }, &args);
+#else
         if (auto interpreter = gsFast3dWindow->GetInterpreterWeak().lock()) {
             interpreter->PrefetchReplacementGroup(group);
         }
+#endif
     }
+}
+
+extern "C" void GameEngine_WaitRendererIdle(void) {
+#ifdef __vita__
+    if (gsFast3dWindow != nullptr) {
+        gsFast3dWindow->WaitForRendererIdle();
+    }
+#endif
 }
 
 extern "C" void GameEngine_InvalidateTextureCache(const void* addr) {
@@ -1400,10 +1441,23 @@ extern "C" void GameEngine_InvalidateTextureCache(const void* addr) {
     if (window != nullptr) {
         auto fast3d = std::dynamic_pointer_cast<Fast::Fast3dWindow>(window);
         if (fast3d != nullptr) {
+#ifdef __vita__
+            struct Args {
+                Fast::Fast3dWindow* window;
+                const uint8_t* addr;
+            } args = { fast3d.get(), reinterpret_cast<const uint8_t*>(addr) };
+            gfx_vita_backend_run_sync([](void* raw) {
+                auto* args = static_cast<Args*>(raw);
+                if (auto interp = args->window->GetInterpreterWeak().lock()) {
+                    interp->TextureCacheDelete(args->addr);
+                }
+            }, &args);
+#else
             auto interp = fast3d->GetInterpreterWeak().lock();
             if (interp != nullptr) {
                 interp->TextureCacheDelete(reinterpret_cast<const uint8_t*>(addr));
             }
+#endif
         }
     }
 }
@@ -1421,10 +1475,19 @@ extern "C" int GameEngine_GetSaveFilePath(char* buf, int bufSize) {
 extern "C" void GameEngine_ClearDepthBuffer(void) {
     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetRawInstance()->GetWindow());
     if (wnd) {
+#ifdef __vita__
+        gfx_vita_backend_run_sync([](void* raw) {
+            auto* window = static_cast<Fast::Fast3dWindow*>(raw);
+            if (auto interp = window->GetInterpreterWeak().lock()) {
+                interp->GetCurrentRenderingAPI()->ClearFramebuffer(false, true);
+            }
+        }, wnd.get());
+#else
         auto interp = wnd->GetInterpreterWeak().lock();
         if (interp) {
             interp->GetCurrentRenderingAPI()->ClearFramebuffer(false, true);
         }
+#endif
     }
 }
 
@@ -1446,30 +1509,48 @@ Fast::Interpreter* GameEngine_GetInterpreter() {
 }
 
 extern "C" float GameEngine_GetAspectRatio(void) {
+#ifdef __vita__
+    return 960.0f / 544.0f;
+#else
     auto interp = GameEngine_GetInterpreter();
     return interp != nullptr ? interp->mCurDimensions.aspect_ratio : (WS_NATIVE_WIDTH / WS_NATIVE_HEIGHT);
+#endif
 }
 
 // Convert an AdjX-space native X into SCISSOR-space native X.
 extern "C" int16_t OTRGetScissorCoordX(float v) {
+#ifdef __vita__
+    float nw = WS_NATIVE_WIDTH;
+#else
     auto interp = GameEngine_GetInterpreter();
     float nw = interp != nullptr ? (float) interp->mNativeDimensions.width : WS_NATIVE_WIDTH;
+#endif
     float k = (4.0f / 3.0f) / GameEngine_GetAspectRatio();
     return (int16_t) std::lround(nw / 2 + k * (v - nw / 2));
 }
 
 extern "C" float OTRGetDimensionFromLeftEdgeForcedAspect(float v, float aspectRatio) {
+#ifdef __vita__
+    float nw = WS_NATIVE_WIDTH;
+    float nh = WS_NATIVE_HEIGHT;
+#else
     auto interp = GameEngine_GetInterpreter();
     float nw = interp != nullptr ? (float) interp->mNativeDimensions.width : WS_NATIVE_WIDTH;
     float nh = interp != nullptr ? (float) interp->mNativeDimensions.height : WS_NATIVE_HEIGHT;
+#endif
     float ar = aspectRatio > 0.0f ? aspectRatio : GameEngine_GetAspectRatio();
     return (nw / 2 - nh / 2 * ar + v);
 }
 
 extern "C" float OTRGetDimensionFromRightEdgeForcedAspect(float v, float aspectRatio) {
+#ifdef __vita__
+    float nw = WS_NATIVE_WIDTH;
+    float nh = WS_NATIVE_HEIGHT;
+#else
     auto interp = GameEngine_GetInterpreter();
     float nw = interp != nullptr ? (float) interp->mNativeDimensions.width : WS_NATIVE_WIDTH;
     float nh = interp != nullptr ? (float) interp->mNativeDimensions.height : WS_NATIVE_HEIGHT;
+#endif
     float ar = aspectRatio > 0.0f ? aspectRatio : GameEngine_GetAspectRatio();
     return (nw / 2 + nh / 2 * ar - v);
 }
@@ -1499,11 +1580,19 @@ extern "C" int16_t OTRGetRectDimensionFromRightEdgeForcedAspect(float v, float a
 }
 
 extern "C" uint32_t OTRGetGameRenderWidth(void) {
+#ifdef __vita__
+    return 960;
+#else
     auto interp = GameEngine_GetInterpreter();
     return interp != nullptr ? interp->mCurDimensions.width : (uint32_t) WS_NATIVE_WIDTH;
+#endif
 }
 
 extern "C" uint32_t OTRGetGameRenderHeight(void) {
+#ifdef __vita__
+    return 544;
+#else
     auto interp = GameEngine_GetInterpreter();
     return interp != nullptr ? interp->mCurDimensions.height : (uint32_t) WS_NATIVE_HEIGHT;
+#endif
 }

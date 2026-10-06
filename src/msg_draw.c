@@ -1823,6 +1823,9 @@ void msg_draw_speech_bubble(
     if (texT > 0x800) {
         texT = 0x800;
     }
+
+    GameEngine_WaitRendererIdle();
+
     gMsgSpeechBoxLQuad[2].v.tc[1] = texT;
     gMsgSpeechBoxLQuad[3].v.tc[1] = texT;
     gMsgSpeechBoxMQuad[2].v.tc[1] = texT;

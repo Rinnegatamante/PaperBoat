@@ -45,6 +45,10 @@ extern "C" void Graphics_PushFrame(Gfx* displayList) {
     GameEngine::ProcessGfxCommands(displayList);
 }
 
+extern "C" void Graphics_WaitRendererIdle(void) {
+    GameEngine_WaitRendererIdle();
+}
+
 #ifdef _WIN32
 int SDL_main(int argc, char** argv) {
 #elif defined(__vita__)

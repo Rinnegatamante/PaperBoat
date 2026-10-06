@@ -50,9 +50,8 @@ static s32 sFbBlend = -1;
 
 // sFlameBlendCpu is sized for u16 because gDPReadFBToI8 writes w*h RGBA5551
 // values into it before compacting in place to w*h I8 in the first half.
-static u16 sFlameBlendCpu[FLAME_TEX_W * FLAME_TEX_H];
-// sFlameReadbackB holds the CPU distort output (I8); sampled by sFlameDrawDL.
-static u16 sFlameReadbackB[FLAME_TEX_W * FLAME_TEX_H];
+static u16 sFlameBlendCpu[2][FLAME_TEX_W * FLAME_TEX_H];
+static u16 sFlameReadbackB[2][FLAME_TEX_W * FLAME_TEX_H];
 
 // Scratch buffers for ping-ponging the 3 distort iterations.
 static u8 sFlameWorkA[FLAME_TEX_W * FLAME_TEX_H];
@@ -75,9 +74,7 @@ static Gfx sFlameRttPass12[] = {
     gsSPEndDisplayList(),
 };
 
-// Per-particle draw DL. Loads sFlameReadbackB as an I8 texture (alpha =
-// intensity) and applies the chroma-key combiner.
-static Gfx sFlameDrawDL[] = {
+static Gfx sFlameDrawStateDL[] = {
     gsDPPipeSync(),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
     gsDPSetCycleType(G_CYC_2CYCLE),
@@ -90,27 +87,6 @@ static Gfx sFlameDrawDL[] = {
     gsDPSetAlphaDither(G_AD_PATTERN),
     gsDPSetTextureLUT(G_TT_NONE),
     gsDPSetRenderMode(G_RM_PASS, G_RM_ZB_CLD_SURF2),
-    gsDPLoadTextureTile(
-        sFlameReadbackB,
-        G_IM_FMT_I,
-        G_IM_SIZ_8b,
-        FLAME_TEX_W,
-        0,
-        0,
-        0,
-        31,
-        63,
-        0,
-        G_TX_NOMIRROR | G_TX_CLAMP,
-        G_TX_NOMIRROR | G_TX_CLAMP,
-        5,
-        6,
-        G_TX_NOLOD,
-        G_TX_NOLOD
-    ),
-    gsDPSetCombineMode(PM_CC_34, PM_CC_35),
-    gsSPClearGeometryMode(G_CULL_BOTH | G_LIGHTING),
-    gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
     gsSPEndDisplayList(),
 };
 
@@ -164,8 +140,9 @@ void port_flame_appendGfx(void* effect) {
     s32 ult = data->unk_24 * 4.0f;
     FlamePreset* preset;
     Matrix4f sp18, sp58, sp98;
-    u8* readback = (u8*) sFlameReadbackB;
-    u8* blendCpu = (u8*) sFlameBlendCpu;
+    const s32 bufferBank = gCurrentDisplayContextIndex;
+    u8* readback = (u8*) sFlameReadbackB[bufferBank];
+    u8* blendCpu = (u8*) sFlameBlendCpu[bufferBank];
     s32 scissorLeft, scissorRight;
 
     gDPPipeSync(gMainGfxPos++);
@@ -189,7 +166,9 @@ void port_flame_appendGfx(void* effect) {
         // Queue readback of sFbBlend into sFlameBlendCpu; the renderer
         // executes it after this callback returns, populating the buffer
         // for next frame's CPU distort.
-        gDPReadFBToI8(gMainGfxPos++, sFbBlend, sFlameBlendCpu, 0, 0, FLAME_TEX_W, FLAME_TEX_H, 0);
+        gDPReadFBToI8(
+            gMainGfxPos++, sFbBlend, sFlameBlendCpu[bufferBank], 0, 0, FLAME_TEX_W, FLAME_TEX_H, 0
+        );
 
         gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, VIRTUAL_TO_PHYSICAL(nuGfxCfb_ptr));
 
@@ -206,12 +185,19 @@ void port_flame_appendGfx(void* effect) {
         flame_distort_cpu(sFlameWorkB, blendCpu, sFlameWorkA, -1, 0);
         flame_distort_cpu(readback, blendCpu, sFlameWorkB, 0, +1);
 
-        GameEngine_InvalidateTextureCache(sFlameReadbackB);
+        GameEngine_InvalidateTextureCache(sFlameReadbackB[bufferBank]);
     }
 
     preset = &FlamePresets[type];
 
-    gSPDisplayList(gMainGfxPos++, sFlameDrawDL);
+    gSPDisplayList(gMainGfxPos++, sFlameDrawStateDL);
+    gDPLoadTextureTile(
+        gMainGfxPos++, sFlameReadbackB[bufferBank], G_IM_FMT_I, G_IM_SIZ_8b, FLAME_TEX_W, 0, 0, 0, 31, 63, 0,
+        G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 6, G_TX_NOLOD, G_TX_NOLOD
+    );
+    gDPSetCombineMode(gMainGfxPos++, PM_CC_34, PM_CC_35);
+    gSPClearGeometryMode(gMainGfxPos++, G_CULL_BOTH | G_LIGHTING);
+    gSPSetGeometryMode(gMainGfxPos++, G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH);
     gDPSetKeyR(gMainGfxPos++, preset->keyCenter, preset->colorScale.r, 0);
     gDPSetKeyGB(gMainGfxPos++, preset->keyCenter, preset->colorScale.g, 0, preset->keyCenter, preset->colorScale.b, 0);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, preset->primIntensity, preset->primIntensity, preset->primIntensity, 0);

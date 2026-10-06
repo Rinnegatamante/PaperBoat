@@ -27,7 +27,7 @@ extern const char* D_E0120794[];
 #define SUN_RAY_VERTS 8
 
 // vtx_600 copied out of the o2r, plus room for a tail behind each quad.
-static Vtx sunWideRays[SUN_RAY_VERTS * 2];
+static Vtx sunWideRays[2][SUN_RAY_VERTS * 2];
 
 // Continue `quad` past its far cap, writing the tail to `tail` and returning the vertices used,
 // or 0 if the cap already clears the frame. The cap edge translates rigidly, so the ray keeps
@@ -71,7 +71,7 @@ static s32 sun_append_ray_tail(const Vtx* quad, Vtx* tail) {
 }
 
 // Copy the ray quads out of the o2r and give each one a tail
-static s32 sun_build_wide_rays(void) {
+static s32 sun_build_wide_rays(Vtx* rays) {
     const Vtx* base = (const Vtx*) LOAD_ASSET(D_09000600_40C1A0);
     s32 count = SUN_RAY_VERTS;
     s32 i;
@@ -80,12 +80,12 @@ static s32 sun_build_wide_rays(void) {
         return 0;
     }
     for (i = 0; i < SUN_RAY_VERTS; i++) {
-        sunWideRays[i] = base[i];
+        rays[i] = base[i];
     }
     for (i = 0; i < SUN_RAY_VERTS; i += 4) {
-        Vtx* tail = &sunWideRays[count];
+        Vtx* tail = &rays[count];
 
-        count += sun_append_ray_tail(&sunWideRays[i], tail);
+        count += sun_append_ray_tail(&rays[i], tail);
     }
     return count;
 }
@@ -99,13 +99,14 @@ void port_sun_appendGfx(void* argEffect) {
     s32 fromRight;
     s32 wideRayVerts;
     s32 i;
+    Vtx* wideRays = sunWideRays[gCurrentDisplayContextIndex];
 
     data = effect->data.sun;
     alpha = data->alpha;
     fromRight = data->shineFromRight;
 
     if (alpha != 0) {
-        wideRayVerts = sun_build_wide_rays();
+        wideRayVerts = sun_build_wide_rays(wideRays);
 
         gDPPipeSync(gMainGfxPos++);
         gSPSegment(gMainGfxPos++, 0x9, VIRTUAL_TO_PHYSICAL(effect->shared->graphics));
@@ -138,7 +139,7 @@ void port_sun_appendGfx(void* argEffect) {
                 s32 v;
 
                 gDPPipeSync(gMainGfxPos++);
-                gSPVertex(gMainGfxPos++, sunWideRays, wideRayVerts, 0);
+                gSPVertex(gMainGfxPos++, wideRays, wideRayVerts, 0);
                 for (v = 0; v < wideRayVerts; v += 4) {
                     gSP2Triangles(gMainGfxPos++, v, v + 1, v + 2, 0, v, v + 2, v + 3, 0);
                 }

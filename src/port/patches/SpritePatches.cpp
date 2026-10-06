@@ -14,11 +14,11 @@ static PAL_PTR sShadingSourcePalette;
 // One palette per shaded component: the display list is built now and run later, so a
 // single buffer would leave every component drawing with the last one written.
 #define SHADING_PALETTE_COUNT 512
-static PAL_BIN sShadingPalettes[SHADING_PALETTE_COUNT][16];
-static s32 sShadingPaletteIdx;
+static PAL_BIN sShadingPalettes[2][SHADING_PALETTE_COUNT][16];
+static s32 sShadingPaletteIdx[2];
 
 void port_begin_shading_palette_frame(void) {
-    sShadingPaletteIdx = 0;
+    sShadingPaletteIdx[gCurrentDisplayContextIndex] = 0;
 }
 
 void port_set_shading_source_palette(PAL_PTR palette) {
@@ -112,8 +112,9 @@ void port_appendGfx_shading_palette(
     // [port] The N64 built this palette by drawing a 16x2 rectangle and reading it back, which
     // stalled the GPU once per shaded component. PM_CC_55 over a 1-bit alpha only selects
     // between two colours, so fill it directly: opaque entries take the shadow tone.
-    PAL_BIN* palette = sShadingPalettes[sShadingPaletteIdx];
-    sShadingPaletteIdx = (sShadingPaletteIdx + 1) % SHADING_PALETTE_COUNT;
+    const s32 paletteBank = gCurrentDisplayContextIndex;
+    PAL_BIN* palette = sShadingPalettes[paletteBank][sShadingPaletteIdx[paletteBank]];
+    sShadingPaletteIdx[paletteBank] = (sShadingPaletteIdx[paletteBank] + 1) % SHADING_PALETTE_COUNT;
     PAL_BIN newPalette[16];
     s32 opaque = 0;
     s32 transparent = 0;

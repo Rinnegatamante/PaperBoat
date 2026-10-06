@@ -82,6 +82,8 @@ static Gfx* build_theater_widescreen_dl(void) {
     f32 k = GameEngine_GetAspectRatio() / (4.0f / 3.0f);
     Gfx* gfx = tb_theaterGfx;
 
+    GameEngine_WaitRendererIdle();
+
     if (k < 1.0f) {
         k = 1.0f;
     }

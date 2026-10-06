@@ -413,6 +413,7 @@ s32 draw_box(s32 flags, void* windowStyleArg, s32 posX, s32 posY, s32 posZ, s32 
         }
 
         if (flags & DRAW_FLAG_ROTSCALE) {
+            GameEngine_WaitRendererIdle();
             quads = gBoxQuadBuffer[gBoxQuadIndex++];
             if (gBoxQuadIndex > BOX_QUAD_BUFFER_NUM - 1) {
                 gBoxQuadIndex = 0;
