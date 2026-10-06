@@ -53,6 +53,7 @@ void state_init_file_select(void) {
     disable_player_input();
     set_time_freeze_mode(TIME_FREEZE_FULL);
     general_heap_create();
+    clear_effect_data();
     hud_element_set_aux_cache(0, 0);
     hud_element_clear_cache();
     mdl_load_all_textures(nullptr, 0, 0);

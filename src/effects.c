@@ -2,6 +2,9 @@
 #include "effects.h"
 #include "ld_addrs.h"
 #include "port/Engine.h"
+#ifdef __vita__
+#include <stdlib.h>
+#endif
 
 typedef s8 TlbEntry[0x1000];
 typedef TlbEntry TlbMappablePage[15];
@@ -10,6 +13,19 @@ typedef TlbEntry TlbMappablePage[15];
 
 BSS EffectSharedData gEffectSharedData[15];
 EffectInstance* gEffectInstances[96];
+
+#ifdef __vita__
+static EffectSharedData* get_vita_effect_shared_data(void) {
+    EffectSharedData* pool = (EffectSharedData*)gEffectSharedData[0].graphics;
+
+    if (pool == nullptr) {
+        pool = calloc(EFFECT_86 + 1, sizeof(*pool));
+        ASSERT(pool != nullptr);
+        gEffectSharedData[0].graphics = pool;
+    }
+    return pool;
+}
+#endif
 
 extern TlbMappablePage gEffectDataBuffer;
 extern Addr gEffectGlobals;
@@ -43,6 +59,12 @@ void clear_effect_data(void) {
     for (i = 0; i < ARRAY_COUNT(gEffectSharedData); i++) {
         gEffectSharedData[i].flags = 0;
     }
+#ifdef __vita__
+    EffectSharedData* vitaSharedData = get_vita_effect_shared_data();
+    for (i = 0; i < EFFECT_86 + 1; i++) {
+        vitaSharedData[i].flags = 0;
+    }
+#endif
 
     for (i = 0; i < ARRAY_COUNT(gEffectInstances); i++) {
         gEffectInstances[i] = nullptr;
@@ -61,6 +83,7 @@ void update_effects(void) {
         EffectSharedData* sharedData;
         s32 i;
 
+#ifndef __vita__
         // reset free delay for each EffectSharedData touched in previous update
         for (i = 0, sharedData = gEffectSharedData; i < ARRAY_COUNT(gEffectSharedData); i++, sharedData++) {
             if (sharedData->flags & FX_SHARED_DATA_LOADED) {
@@ -70,6 +93,7 @@ void update_effects(void) {
                 }
             }
         }
+#endif
 
         // update each EffectInstances
         for (i = 0; i < ARRAY_COUNT(gEffectInstances); i++) {
@@ -92,6 +116,7 @@ void update_effects(void) {
             }
         }
 
+#ifndef __vita__
         // free any EffectSharedData which haven't been used recently
         for (i = 0, sharedData = gEffectSharedData; i < ARRAY_COUNT(gEffectSharedData); i++, sharedData++) {
             if (sharedData->flags & FX_SHARED_DATA_LOADED) {
@@ -108,6 +133,7 @@ void update_effects(void) {
                 }
             }
         }
+#endif
     }
 }
 
@@ -217,10 +243,16 @@ EffectInstance* create_effect_instance(EffectBlueprint* effectBp) {
     // Allocate space for the new instance
     gEffectInstances[i] = newEffectInst = general_heap_malloc(sizeof(*newEffectInst));
     ASSERT(newEffectInst != nullptr);
+    newEffectInst->shared = nullptr;
 
-    sharedData = &gEffectSharedData[0];
     newEffectInst->effectID = effectBp->effectID;
     newEffectInst->flags = FX_INSTANCE_FLAG_ENABLED;
+
+#ifdef __vita__
+    load_effect(effectBp->effectID);
+    sharedData = &get_vita_effect_shared_data()[effectBp->effectID];
+#else
+    sharedData = &gEffectSharedData[0];
 
     // Look for a loaded effect of the proper index
     for (i = 0; i < ARRAY_COUNT(gEffectSharedData); i++) {
@@ -244,6 +276,7 @@ EffectInstance* create_effect_instance(EffectBlueprint* effectBp) {
     }
 
     ASSERT(i < ARRAY_COUNT(gEffectSharedData));
+#endif
 
     // If this is the first new instance of the effect, initialize the function pointers
     if (sharedData->instanceCounter == 0) {
@@ -319,6 +352,23 @@ s32 load_effect(s32 effectIndex) {
     EffectSharedData* sharedData;
     s32 i;
 
+#ifdef __vita__
+    ASSERT(effectIndex >= 0 && effectIndex <= EFFECT_86);
+    sharedData = &get_vita_effect_shared_data()[effectIndex];
+
+    if (sharedData->flags & FX_SHARED_DATA_LOADED) {
+        sharedData->effectIndex = effectIndex;
+        sharedData->instanceCounter = 0;
+        sharedData->flags = FX_SHARED_DATA_LOADED;
+        return 1;
+    }
+
+    sharedData->graphics = effectEntry->graphicsDmaStart != nullptr ? (void*)1 : nullptr;
+    sharedData->effectIndex = effectIndex;
+    sharedData->instanceCounter = 0;
+    sharedData->flags = FX_SHARED_DATA_LOADED;
+    return 1;
+#else
     // Look for a loaded effect matching the desired index
     for (i = 0, sharedData = &gEffectSharedData[0]; i < ARRAY_COUNT(gEffectSharedData); i++) {
         if ((sharedData->flags & FX_SHARED_DATA_LOADED) && sharedData->effectIndex == effectIndex) {
@@ -343,37 +393,6 @@ s32 load_effect(s32 effectIndex) {
         sharedData++;
     }
 
-#ifdef __vita__
-    if (i >= ARRAY_COUNT(gEffectSharedData)) {
-        s32 sharedIndex;
-
-        for (sharedIndex = 0; sharedIndex < ARRAY_COUNT(gEffectSharedData); sharedIndex++) {
-            EffectSharedData* candidate = &gEffectSharedData[sharedIndex];
-            b32 inUse = false;
-            s32 instanceIndex;
-
-            for (instanceIndex = 0; instanceIndex < ARRAY_COUNT(gEffectInstances); instanceIndex++) {
-                EffectInstance* instance = gEffectInstances[instanceIndex];
-
-                if (instance != nullptr && instance->shared == candidate) {
-                    inUse = true;
-                    break;
-                }
-            }
-
-            if (!inUse) {
-                candidate->graphics = nullptr;
-                candidate->flags = 0;
-                candidate->instanceCounter = 0;
-                osUnmapTLB(sharedIndex);
-                sharedData = candidate;
-                i = sharedIndex;
-                break;
-            }
-        }
-    }
-#endif
-
     // If no empty space was found, panic
     ASSERT(i < ARRAY_COUNT(gEffectSharedData));
 
@@ -392,4 +411,5 @@ s32 load_effect(s32 effectIndex) {
     sharedData->instanceCounter = 0;
     sharedData->flags = FX_SHARED_DATA_LOADED;
     return 1;
+#endif
 }

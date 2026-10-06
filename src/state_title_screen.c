@@ -323,6 +323,7 @@ void state_step_title_screen(void) {
                 break;
             }
             general_heap_create();
+            clear_effect_data();
             clear_render_tasks();
             create_cameras();
             clear_entity_models();
