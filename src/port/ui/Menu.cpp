@@ -373,7 +373,12 @@ void Menu::MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors me
                 if (availableAudioBackendsMap.empty()) {
                     availableAudioBackends = audio->GetAvailableAudioBackends();
                     for (auto& backend : *availableAudioBackends) {
-                        availableAudioBackendsMap[backend] = audioBackendsMap.at(backend);
+                        auto backendName = audioBackendsMap.find(backend);
+                        if (backendName != audioBackendsMap.end()) {
+                            availableAudioBackendsMap[backend] = backendName->second;
+                        } else {
+                            SPDLOG_WARN("Skipping unknown audio backend {} in settings menu", static_cast<int>(backend));
+                        }
                     }
                 }
                 auto currentAudioBackend = audio->GetCurrentAudioBackend();
