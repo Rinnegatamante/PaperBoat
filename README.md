@@ -1,3 +1,23 @@
+# Paperboat Vita
+
+This is a port of Paperboat (v.1.0.1 with some improvements from develop branch) for PSVita.
+
+## Setup Instructions
+- Download [Paperboat v.1.0.1](https://github.com/HarbourMasters/PaperBoat/releases/tag/1.0.1) for PC.
+- Follow its instructions to generate `pm64.o2r`.
+- Extract `paperboat.zip` from the Release tab in `ux0:data`.
+- Place `assets` folder and `pm64.o2r` from the PC install in `ux0:data/paperboat`.
+- Install the vpk from the Release tab.
+
+## Credits
+- Standard-Republic for the Livearea assets.
+- Matichu for testing the homebrew and providing screenshots.
+
+## vitaGL flags
+HAVE_PTHREAD=1 NO_DEBUG=1 HAVE_GLSL_TEXTURE_SIZE=1 INDICES_SPEEDHACK=1 READBACKS_SPEEDHACK=1
+
+# Original Readme
+
 # PaperBoat
 *Harbour Masters port of Paper Mario 64*
 
